@@ -483,6 +483,8 @@ static int write_at(git_indexer *idx, const void *data, git_off_t offset, size_t
 
 	map_data = (unsigned char *)map.data;
 	memcpy(map_data + page_offset, data, size);
+	// Emscripten mmap is read only, so have to help a little and add a manual write here
+	pwrite(fd,data,size,page_start+page_offset);
 	p_munmap(&map);
 
 	return 0;
@@ -957,11 +959,11 @@ int git_indexer_commit(git_indexer *idx, git_transfer_progress *stats)
 		git_mwindow_close(&w);
 		goto on_error;
 	}
-
+	
 	/* Compare the packfile trailer as it was sent to us and what we calculated */
 	git_oid_fromraw(&file_hash, packfile_trailer);
 	git_mwindow_close(&w);
-
+	
 	git_hash_final(&trailer_hash, &idx->trailer);
 	if (git_oid_cmp(&file_hash, &trailer_hash)) {
 		giterr_set(GITERR_INDEXER, "packfile trailer mismatch");
@@ -1071,6 +1073,9 @@ int git_indexer_commit(git_indexer *idx, git_transfer_progress *stats)
 
 	git_mwindow_free_all(&idx->pack->mwf);
 
+	// In Emscripten file system this file is read only, so have to give it write permission here
+	fchmod(idx->pack->mwf.fd,0777);
+		
 	/* Truncate file to undo rounding up to next page_size in append_to_pack */
 	if (p_ftruncate(idx->pack->mwf.fd, idx->pack->mwf.size) < 0) {
 		giterr_set(GITERR_OS, "failed to truncate pack file '%s'", idx->pack->pack_name);

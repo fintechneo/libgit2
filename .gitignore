@@ -31,3 +31,13 @@ msvc/Release/
 .*.swp
 tags
 mkmf.log
+
+jsbuild/src
+jsbuild/deps
+jsbuild/CMake*
+jsbuild/libgit2.pc
+jsbuild/Makefile
+jsbuild/*.js
+jsbuild/*.js.mem
+
+.vscode

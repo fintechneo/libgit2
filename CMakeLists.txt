@@ -31,10 +31,10 @@ INCLUDE(FindThreads)
 
 # Build options
 #
-OPTION( SONAME				"Set the (SO)VERSION of the target"		ON  )
-OPTION( BUILD_SHARED_LIBS	"Build Shared Library (OFF for Static)"	ON  )
-OPTION( THREADSAFE			"Build libgit2 as threadsafe"			ON )
-OPTION( BUILD_CLAR			"Build Tests using the Clar suite"		ON  )
+OPTION( SONAME				"Set the (SO)VERSION of the target"		OFF  )
+OPTION( BUILD_SHARED_LIBS	"Build Shared Library (OFF for Static)"	OFF  )
+OPTION( THREADSAFE			"Build libgit2 as threadsafe"			OFF )
+OPTION( BUILD_CLAR			"Build Tests using the Clar suite"		OFF  )
 OPTION( BUILD_EXAMPLES		"Build library usage example apps"		OFF )
 OPTION( TAGS				"Generate tags"							OFF )
 OPTION( PROFILE				"Generate profiling information"		OFF )
@@ -43,7 +43,7 @@ OPTION( LIBGIT2_FILENAME	"Name of the produced binary"			OFF )
 
 OPTION( USE_SHA1DC			"Use SHA-1 with collision detection"	OFF )
 OPTION( USE_ICONV			"Link with and use iconv library" 		OFF )
-OPTION( USE_SSH				"Link with libssh to enable SSH support" ON )
+OPTION( USE_SSH				"Link with libssh to enable SSH support" OFF )
 OPTION( USE_GSSAPI			"Link with libgssapi for SPNEGO auth"   OFF )
 OPTION( VALGRIND			"Configure build for valgrind"			OFF )
 OPTION( CURL			"Use curl for HTTP if available" ON)

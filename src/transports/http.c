@@ -663,7 +663,7 @@ static int http_stream_read(
 	http_subtransport *t = OWNING_SUBTRANSPORT(s);
 	parser_context ctx;
 	size_t bytes_parsed;
-
+	
 replay:
 	*bytes_read = 0;
 
@@ -705,7 +705,11 @@ replay:
 
 		s->received_response = 1;
 	}
-
+		
+	// When using emscripten we simply bypass the http parser since we use the one built into the browser
+	*(bytes_read)  = git_stream_read(t->io, buffer, buf_size);	
+	
+	#ifdef DISABLED_IN_EMSCRIPTEN
 	while (!*bytes_read && !t->parse_finished) {
 		size_t data_offset;
 		int error;
@@ -775,7 +779,8 @@ replay:
 			return -1;
 		}
 	}
-
+	#endif	
+	
 	return 0;
 }
 
@@ -846,7 +851,7 @@ static int http_stream_write_chunked(
 			}
 		}
 	}
-
+	
 	return 0;
 }
 
