@@ -1,3 +1,38 @@
+HACK to build with emscripten and run in the browser
+====================================================
+
+The build-setup here is tested with Ubuntu 16.04 and latest emscripten sdk (1.37.9)
+
+First of all you need to source the emscripten sdk:
+
+    source /home/ubuntu/emsdk_portable/emsdk_env.sh
+
+Then go into the jsbuild folder and run the build shell script:
+
+    cd jsbuild
+    sh build.sh
+
+You should end up with a libgit2.js file in your jsbuild folder.
+
+In your webserver you should map the jsbuild folder to e.g. https://yourhost/libgit2 so that when you navigate to this URL you'll get the index.html page in that jsbuild folder.
+
+Because of CORS restrictions in the browser you cannot read from github directly from another domain. You need to add a proxy on your web server. E.g. for Apache you'd use a ProxyPass directive like this:
+
+    ProxyPass /fintechneo/angular2-templates.git/ https://github.com/fintechneo/angular2-templates.git/
+    ProxyPassReverse /fintechneo/angular2-templates.git/ https://github.com/fintechneo/angular2-templates.git/
+
+When testing with the index.html file included here you should open the web console which will prompt "ready" when loaded.
+
+Type the command:
+    window.gitclonetest("https://github.com/fintechneo/angular2-templates.git","angulartemplates")
+
+You'll see the git clone process starts. This is not a small repository so it takes some time.
+
+When the clone is done you can list the folder contents by typing:
+
+    FS.readdir("angulartemplates")
+
+
 libgit2 - the Git linkable library
 ==================================
 
