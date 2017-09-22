@@ -23,9 +23,10 @@ Because of CORS restrictions in the browser you cannot read from github directly
 
 When testing with the index.html file included here you should open the web console which will prompt "ready" when loaded.
 
-Type the command:
+Type the commands:
 
-    window.gitclonetest("https://github.com/fintechneo/angular2-templates.git","angulartemplates")
+    window.jsgitinit();
+    window.jsgitclone("https://github.com/fintechneo/angular2-templates.git","angulartemplates");
 
 You'll see the git clone process starts. This is not a small repository so it takes some time.
 
