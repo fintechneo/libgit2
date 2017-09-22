@@ -1,0 +1,10 @@
+[
+    "_jsgitinit",    
+    "_jsgitshutdown",
+    "_jsgitopenrepo",
+    "_jsgitclone",
+    "_jsgitadd",
+    "_jsgitcommit",
+    "_jsgitpush",
+    "_jsgitprintlatestcommit"
+]

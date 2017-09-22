@@ -451,6 +451,7 @@ int git_filebuf_commit(git_filebuf *file)
 
 	file->did_rename = true;
 
+	chmod(file->path_original,0777);
 	git_filebuf_cleanup(file);
 	return 0;
 

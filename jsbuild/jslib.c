@@ -3,6 +3,8 @@
 #include "../include/git2.h"
 #include "../include/git2/clone.h"
 
+static git_repository *repo = NULL;
+
 typedef struct progress_data {
 	git_transfer_progress fetch_progress;
 	size_t completed_steps;
@@ -81,7 +83,7 @@ int cred_acquire_cb(git_cred **out,
 int cloneremote(const char * url,const char * path)
 {
 	progress_data pd = {{0}};
-	git_repository *cloned_repo = NULL;
+
 	git_clone_options clone_opts = GIT_CLONE_OPTIONS_INIT;
 	git_checkout_options checkout_opts = GIT_CHECKOUT_OPTIONS_INIT;
 		
@@ -98,20 +100,108 @@ int cloneremote(const char * url,const char * path)
 	clone_opts.fetch_opts.callbacks.payload = &pd;
 
 	// Do the clone
-	error = git_clone(&cloned_repo, url, path, &clone_opts);
+	error = git_clone(&repo, url, path, &clone_opts);
 	printf("\n");
 	if (error != 0) {
 		const git_error *err = giterr_last();
 		if (err) printf("ERROR %d: %s\n", err->klass, err->message);
 		else printf("ERROR %d: no detailed info\n", error);
-	}
-	else if (cloned_repo) git_repository_free(cloned_repo);
+	}	
 	return error;
 }
-	
-void gitclonetest(char * url, char * localdir) {	
+
+
+
+void jsgitinit() {
 	git_libgit2_init();
-	printf("Git initialized\n");
+	printf("libgit2 for javascript initialized\n");
+}
+
+void jsgitopenrepo() {
+	git_repository_open(&repo, ".");
+}
+
+void jsgitclone(char * url, char * localdir) {			
 	cloneremote(url,localdir);			
 }
 
+void jsgitadd(char * path) {	
+	git_index *index;	
+	git_repository_index(&index, repo);	
+	git_index_add_bypath(index, path);
+	git_index_write(index);
+	git_index_free(index);
+}
+
+void jsgitcommit(char * comment,char * name, char * email, long time, int offset) {
+	git_oid commit_oid,tree_oid,oid_parent_commit;
+	git_commit *parent_commit;
+	git_tree *tree;
+	git_index *index;	
+	git_object *parent = NULL;
+	git_reference *ref = NULL;	
+	
+	git_revparse_ext(&parent, &ref, repo, "HEAD");
+	git_repository_index(&index, repo);	
+	git_index_write_tree(&tree_oid, index);
+	git_index_write(index);
+	git_index_free(index);
+
+	int error = git_tree_lookup(&tree, repo, &tree_oid);
+	if (error != 0) {
+		const git_error *err = giterr_last();
+		if (err) printf("ERROR %d: %s\n", err->klass, err->message);
+		else printf("ERROR %d: no detailed info\n", error);
+	}
+
+	
+	git_signature *signature;	
+	git_signature_new(&signature, name, email, time, offset);
+	
+	error = git_commit_create_v(
+		&commit_oid,
+		repo,
+		"HEAD",
+		signature,
+		signature,
+		NULL,
+		comment,
+		tree,
+		parent ? 1 : 0, parent);
+		
+	if (error != 0) {
+		const git_error *err = giterr_last();
+		if (err) printf("ERROR %d: %s\n", err->klass, err->message);
+		else printf("ERROR %d: no detailed info\n", error);
+	}
+	git_signature_free(signature);
+	git_tree_free(tree);	
+}
+
+void jsgitprintlatestcommit()
+{
+	int rc;
+	git_commit * commit = NULL; /* the result */
+	git_oid oid_parent_commit;  /* the SHA1 for last commit */
+
+	/* resolve HEAD into a SHA1 */
+	rc = git_reference_name_to_id( &oid_parent_commit, repo, "HEAD" );
+	if ( rc == 0 )
+	{
+		/* get the actual commit structure */
+		rc = git_commit_lookup( &commit, repo, &oid_parent_commit );
+		if ( rc == 0 )
+		{
+			printf("%s\n",git_commit_message(commit));
+			git_commit_free(commit);      
+		}
+	}	
+}
+
+void jsgitshutdown() {
+	git_libgit2_shutdown();
+}
+
+void jsgitpush() {
+
+}
