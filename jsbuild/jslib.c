@@ -203,5 +203,33 @@ void jsgitshutdown() {
 }
 
 void jsgitpush() {
+	// get the remote.
+	int error;
 
+	git_remote* remote = NULL;
+	git_remote_lookup( &remote, repo, "origin" );
+
+	// connect to remote
+	//git_remote_connect( remote, GIT_DIRECTION_PUSH , NULL, NULL, NULL);
+
+	// add a push refspec
+	git_remote_add_push(repo,"origin", "refs/heads/master:refs/heads/master" );
+	if (error != 0) {
+		const git_error *err = giterr_last();
+		if (err) printf("ERROR %d: %s\n", err->klass, err->message);
+		else printf("ERROR %d: no detailed info\n", error);
+	}
+
+	// configure options
+	git_push_options options;
+	git_push_init_options( &options, GIT_PUSH_OPTIONS_VERSION );
+
+	// do the push
+	printf("Do the push\n");
+	error = git_remote_upload( remote, NULL, &options );
+	if (error != 0) {
+		const git_error *err = giterr_last();
+		if (err) printf("ERROR %d: %s\n", err->klass, err->message);
+		else printf("ERROR %d: no detailed info\n", error);
+	}
 }

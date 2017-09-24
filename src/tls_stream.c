@@ -27,6 +27,9 @@ git_stream xhrstream;
 
 int emscripten_connect(git_stream *stream) {
 	printf("Connecting\n");	
+	EM_ASM(
+		window.gitxhrdata = null;
+	);
 	return 1;
 }
 
@@ -35,6 +38,11 @@ ssize_t emscripten_read(git_stream *stream, void *data, size_t len) {
 	
 	unsigned int readyState = 0;
 	EM_ASM_({		
+		if(window.gitxhrdata!==null) {
+			console.log("sending post data",window.gitxhrdata.length);
+			window.gitxhr.send(window.gitxhrdata.buffer);			
+			window.gitxhrdata = null;
+		} 
 		setValue($0,window.gitxhr.readyState,"i32");
 	},&readyState);
 	
@@ -77,7 +85,8 @@ int emscripten_certificate(git_cert **out, git_stream *stream) {
 
 ssize_t emscripten_write(git_stream *stream, const char *data, size_t len, int flags) {
 	EM_ASM_({
-		var data = Pointer_stringify($0);		
+		var data = Pointer_stringify($0);
+		
 		if(data.indexOf("GET ")===0) {				
 			window.gitxhr=new XMLHttpRequest();
 			window.gitxhrreadoffset = 0;
@@ -91,17 +100,27 @@ ssize_t emscripten_write(git_stream *stream, const char *data, size_t len, int f
 			var requestlines = data.split("\n");			
 			window.gitxhr.open("POST",requestlines[0].split(" ")[1]);
 			
-			console.log(data);								
+			console.log(data);
+			window.gitxhrdata = null;								
 			for(var n=1;n<requestlines.length;n++) {
 				if(requestlines[n].indexOf("Content-Type")===0) {
 					window.gitxhr.setRequestHeader("Content-Type",requestlines[n].split(": ")[1].trim());
 				}	
+			}			
+		} else {
+			if(window.gitxhrdata===null) {				
+				console.log("New post data",$1,data);
+				window.gitxhrdata = new Uint8Array($1);
+				window.gitxhrdata.set(new Uint8Array(Module.HEAPU8.buffer,$0,$1),0);				
+			} else {
+				var appended = new Uint8Array(window.gitxhrdata.length+$1);
+				appended.set(window.gitxhrdata,0);
+				appended.set(new Uint8Array(Module.HEAPU8.buffer,$0,$1),window.gitxhrdata.length);
+				window.gitxhrdata = appended;										
+				console.log("Appended post data",$1,window.gitxhrdata.length,data);
 			}
-			
-		} else {			
-			window.gitxhr.send(data);
 		}
-	},data);
+	},data,len);
 	
 	return len;
 }
