@@ -392,6 +392,32 @@ void jsgitshutdown() {
 	git_libgit2_shutdown();
 }
 
+int fetchead_foreach_cb(const char *ref_name,
+	const char *remote_url,
+	const git_oid *oid,
+	unsigned int is_merge,
+	void *payload)
+{	  
+	if(is_merge) {
+		git_annotated_commit * fetchhead_commit;
+					
+		int error = git_annotated_commit_lookup(&fetchhead_commit,
+			repo,
+			oid
+		);						
+			
+		git_merge_options merge_opts = GIT_MERGE_OPTIONS_INIT;
+		git_checkout_options checkout_opts = GIT_CHECKOUT_OPTIONS_INIT;
+		checkout_opts.checkout_strategy = GIT_CHECKOUT_SAFE;
+
+		const git_annotated_commit ** merge_commit = &fetchhead_commit;
+		error = git_merge(repo,merge_commit,1,&merge_opts,&checkout_opts);		
+		
+		git_annotated_commit_free(fetchhead_commit);			
+		printf("Merged %s\n",remote_url);
+	}
+}	
+
 void jsgitpull() {
 	git_remote *remote = NULL;
 	const git_transfer_progress *stats;
@@ -430,6 +456,11 @@ void jsgitpull() {
 
 	printf("Fetch done\n");
 	
+	
+	git_repository_fetchhead_foreach(repo,&fetchead_foreach_cb,NULL);
+	
+	//git_repository_state_cleanup(repo);
+
 	//printf("Pull done\n");
 	return;
 
