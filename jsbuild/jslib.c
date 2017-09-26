@@ -401,7 +401,7 @@ int fetchead_foreach_cb(const char *ref_name,
 	if(is_merge) {
 		git_annotated_commit * fetchhead_commit;
 					
-		int error = git_annotated_commit_lookup(&fetchhead_commit,
+		git_annotated_commit_lookup(&fetchhead_commit,
 			repo,
 			oid
 		);						
@@ -410,10 +410,19 @@ int fetchead_foreach_cb(const char *ref_name,
 		git_checkout_options checkout_opts = GIT_CHECKOUT_OPTIONS_INIT;
 		checkout_opts.checkout_strategy = GIT_CHECKOUT_SAFE;
 
-		const git_annotated_commit ** merge_commit = &fetchhead_commit;
-		error = git_merge(repo,merge_commit,1,&merge_opts,&checkout_opts);		
+		git_merge(repo,&fetchhead_commit,1,&merge_opts,&checkout_opts);		
 		
 		git_annotated_commit_free(fetchhead_commit);			
+
+		git_reference *ref;
+		git_reference_lookup(&ref, repo, "refs/heads/master");
+		git_reference *newref;
+		git_reference_set_target(&newref,ref,oid,"pull");
+		git_reference_free(newref);
+		git_reference_free(ref);
+
+		git_repository_state_cleanup(repo);
+
 		printf("Merged %s\n",remote_url);
 	}
 }	
