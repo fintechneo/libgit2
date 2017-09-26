@@ -80,8 +80,11 @@ static int parse_header(struct git_pack_header *hdr, struct git_pack_file *pack)
 		return error;
 
 	memcpy(hdr, map.data, sizeof(*hdr));
+	
+	// Emscripten mmap is read only, so have to help a little and add a manual write here
+	pwrite( pack->mwf.fd,hdr,sizeof(*hdr),0);	
 	p_munmap(&map);
-
+	
 	/* Verify we recognize this pack file format. */
 	if (hdr->hdr_signature != ntohl(PACK_SIGNATURE)) {
 		giterr_set(GITERR_INDEXER, "wrong pack signature");

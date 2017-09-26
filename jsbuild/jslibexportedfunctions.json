@@ -6,5 +6,6 @@
     "_jsgitadd",
     "_jsgitcommit",
     "_jsgitpush",
+    "_jsgitpull",
     "_jsgitprintlatestcommit"
 ]
