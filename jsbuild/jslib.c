@@ -21,7 +21,7 @@ typedef struct progress_data {
 int emscripten_connect(git_stream *stream) {
 	printf("Connecting\n");	
 	EM_ASM(
-		window.gitxhrdata = null;
+		self.gitxhrdata = null;
 	);
 	return 1;
 }
@@ -31,37 +31,37 @@ ssize_t emscripten_read(git_stream *stream, void *data, size_t len) {
 	
 	unsigned int readyState = 0;
 	EM_ASM_({		
-		if(window.gitxhrdata!==null) {
-			console.log("sending post data",window.gitxhrdata.length);
-			window.gitxhr.send(window.gitxhrdata.buffer);			
-			window.gitxhrdata = null;
+		if(self.gitxhrdata!==null) {
+			console.log("sending post data",self.gitxhrdata.length);
+			self.gitxhr.send(self.gitxhrdata.buffer);			
+			self.gitxhrdata = null;
 		} 
-		setValue($0,window.gitxhr.readyState,"i32");
+		setValue($0,self.gitxhr.readyState,"i32");
 	},&readyState);
 	
 	while(readyState!=4) {
 		EM_ASM_({
 			console.log("Waiting for data");
-			setValue($0,window.gitxhr.readyState,"i32");
+			setValue($0,self.gitxhr.readyState,"i32");
 		},&readyState);
 		
 		emscripten_sleep(10);
 	}
 	
 	EM_ASM_({
-		if(window.gitxhr) {
-			var arrayBuffer = window.gitxhr.response; // Note: not oReq.responseText
+		if(self.gitxhr) {
+			var arrayBuffer = self.gitxhr.response; // Note: not oReq.responseText
 					
-			if (window.gitxhr.readyState===4 && arrayBuffer) {		
-				var availlen = (arrayBuffer.byteLength-window.gitxhrreadoffset);						
+			if (self.gitxhr.readyState===4 && arrayBuffer) {		
+				var availlen = (arrayBuffer.byteLength-self.gitxhrreadoffset);						
 				var len = availlen > $2 ? $2 : availlen;
 								
-				var byteArray = new Uint8Array(arrayBuffer,window.gitxhrreadoffset,len);		
-				//console.log("read from ",arrayBuffer.byteLength,window.gitxhrreadoffset,len,byteArray[0]);
+				var byteArray = new Uint8Array(arrayBuffer,self.gitxhrreadoffset,len);		
+				//console.log("read from ",arrayBuffer.byteLength,self.gitxhrreadoffset,len,byteArray[0]);
 				writeArrayToMemory(byteArray,$0);
 				setValue($1,len,"i32");
 				
-				window.gitxhrreadoffset+=len;				
+				self.gitxhrreadoffset+=len;				
 			}
 		} else {
 			setValue($1,-1,"i32");
@@ -81,36 +81,36 @@ ssize_t emscripten_write(git_stream *stream, const char *data, size_t len, int f
 		var data = Pointer_stringify($0);
 		
 		if(data.indexOf("GET ")===0) {				
-			window.gitxhr=new XMLHttpRequest();
-			window.gitxhrreadoffset = 0;
-			window.gitxhr.responseType = "arraybuffer";			
-			window.gitxhr.open("GET",data.split("\n")[0].split(" ")[1]);		
-			window.gitxhr.send();
+			self.gitxhr=new XMLHttpRequest();
+			self.gitxhrreadoffset = 0;
+			self.gitxhr.responseType = "arraybuffer";			
+			self.gitxhr.open("GET",data.split("\n")[0].split(" ")[1]);		
+			self.gitxhr.send();
 		} else if(data.indexOf("POST ")===0) {
-			window.gitxhr=new XMLHttpRequest();
-			window.gitxhrreadoffset = 0;
-			window.gitxhr.responseType = "arraybuffer";			
+			self.gitxhr=new XMLHttpRequest();
+			self.gitxhrreadoffset = 0;
+			self.gitxhr.responseType = "arraybuffer";			
 			var requestlines = data.split("\n");			
-			window.gitxhr.open("POST",requestlines[0].split(" ")[1]);
+			self.gitxhr.open("POST",requestlines[0].split(" ")[1]);
 			
 			console.log(data);
-			window.gitxhrdata = null;								
+			self.gitxhrdata = null;								
 			for(var n=1;n<requestlines.length;n++) {
 				if(requestlines[n].indexOf("Content-Type")===0) {
-					window.gitxhr.setRequestHeader("Content-Type",requestlines[n].split(": ")[1].trim());
+					self.gitxhr.setRequestHeader("Content-Type",requestlines[n].split(": ")[1].trim());
 				}	
 			}			
 		} else {
-			if(window.gitxhrdata===null) {				
+			if(self.gitxhrdata===null) {				
 				console.log("New post data",$1,data);
-				window.gitxhrdata = new Uint8Array($1);
-				window.gitxhrdata.set(new Uint8Array(Module.HEAPU8.buffer,$0,$1),0);				
+				self.gitxhrdata = new Uint8Array($1);
+				self.gitxhrdata.set(new Uint8Array(Module.HEAPU8.buffer,$0,$1),0);				
 			} else {
-				var appended = new Uint8Array(window.gitxhrdata.length+$1);
-				appended.set(window.gitxhrdata,0);
-				appended.set(new Uint8Array(Module.HEAPU8.buffer,$0,$1),window.gitxhrdata.length);
-				window.gitxhrdata = appended;										
-				console.log("Appended post data",$1,window.gitxhrdata.length,data);
+				var appended = new Uint8Array(self.gitxhrdata.length+$1);
+				appended.set(self.gitxhrdata,0);
+				appended.set(new Uint8Array(Module.HEAPU8.buffer,$0,$1),self.gitxhrdata.length);
+				self.gitxhrdata = appended;										
+				console.log("Appended post data",$1,self.gitxhrdata.length,data);
 			}
 		}
 	},data,len);
