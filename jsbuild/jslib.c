@@ -399,32 +399,96 @@ int fetchead_foreach_cb(const char *ref_name,
 	void *payload)
 {	  
 	if(is_merge) {
-		git_annotated_commit * fetchhead_commit;
-					
-		git_annotated_commit_lookup(&fetchhead_commit,
+		git_annotated_commit * fetchhead_annotated_commit;			
+						
+		git_annotated_commit_lookup(&fetchhead_annotated_commit,
 			repo,
 			oid
-		);						
+		);			
 			
 		git_merge_options merge_opts = GIT_MERGE_OPTIONS_INIT;
 		git_checkout_options checkout_opts = GIT_CHECKOUT_OPTIONS_INIT;
 		checkout_opts.checkout_strategy = GIT_CHECKOUT_SAFE;
 
-		git_merge(repo,&fetchhead_commit,1,&merge_opts,&checkout_opts);		
+		const git_annotated_commit *mergeheads[] = {fetchhead_annotated_commit};
+		git_merge(repo,mergeheads,
+			1,&merge_opts,
+			&checkout_opts);		
+				
+		git_merge_analysis_t analysis;
+		git_merge_preference_t preference = GIT_MERGE_PREFERENCE_NONE;
+		git_merge_analysis(&analysis,
+				&preference,
+				repo,
+				mergeheads
+				,1);
 		
-		git_annotated_commit_free(fetchhead_commit);			
+		if(analysis==GIT_MERGE_ANALYSIS_NORMAL) {		
+			printf("Normal merge\n");
+			git_signature * signature;
+			git_signature_default(&signature,repo);
+						
+			git_oid commit_oid,oid_parent_commit,tree_oid;
+			git_commit * parent_commit;
+			git_commit * commit = NULL; /* the result */
+			git_commit * fetchhead_commit;
 
-		git_reference *ref;
-		git_reference_lookup(&ref, repo, "refs/heads/master");
-		git_reference *newref;
-		git_reference_set_target(&newref,ref,oid,"pull");
-		git_reference_free(newref);
-		git_reference_free(ref);
+			git_commit_lookup(&fetchhead_commit,
+				repo,
+				oid
+			);						
+						
+			git_reference_name_to_id( &oid_parent_commit, repo, "HEAD" );
+			git_commit_lookup( &parent_commit, repo, &oid_parent_commit );
+			
+			git_tree *tree;
+			git_index *index;	
+			
+			git_repository_index(&index, repo);	
+			git_index_write_tree(&tree_oid, index);
+			git_index_write(index);
+			git_index_free(index);
+		
+			git_tree_lookup(&tree, repo, &tree_oid);
+							
+			git_commit_create_v(
+				&commit_oid,
+				repo,
+				"HEAD",
+				signature,
+				signature,
+				NULL,
+				"Merge with remote",
+				tree,
+				2, 
+				parent_commit, 
+				fetchhead_commit
+			);
+			git_commit_free(parent_commit);
+			git_commit_free(fetchhead_commit);
+			git_repository_state_cleanup(repo);
+		} else if(analysis==(GIT_MERGE_ANALYSIS_NORMAL | GIT_MERGE_ANALYSIS_FASTFORWARD)) {
+			printf("Fast forward\n");
+			git_reference * ref = NULL;		
 
-		git_repository_state_cleanup(repo);
+			git_reference_lookup(&ref, repo, "refs/heads/master");
+			git_reference *newref;
+			git_reference_set_target(&newref,ref,oid,"pull");
 
+			git_reference_free(newref);
+			git_reference_free(ref);
+
+			git_repository_state_cleanup(repo);
+		} else if(analysis==GIT_MERGE_ANALYSIS_UP_TO_DATE) {
+			printf("All up to date\n",analysis);
+		} else {
+			printf("Don't know how to merge %d\n");
+		}
+								
+		git_annotated_commit_free(fetchhead_annotated_commit);
+		
 		printf("Merged %s\n",remote_url);
-	}
+	}	
 }	
 
 void jsgitpull() {
