@@ -312,10 +312,15 @@ void jsgitopenrepo() {
 }
 
 void jsgitclone(char * url, char * localdir) {			
-	cloneremote(url,localdir);			
+	cloneremote(url,localdir);	
+	EM_ASM(
+		if(self.jsgitonmethodfinish) {
+			self.jsgitonmethodfinish();
+		}
+	);		
 }
 
-void jsgitadd(char * path) {	
+void jsgitadd(const char * path) {	
 	git_index *index;	
 	git_repository_index(&index, repo);	
 	git_index_add_bypath(index, path);
@@ -535,13 +540,46 @@ void jsgitpull() {
 	//git_repository_state_cleanup(repo);
 
 	//printf("Pull done\n");
+	EM_ASM(
+		if(self.jsgitonmethodfinish) {
+			self.jsgitonmethodfinish();
+		}
+	);	
 	return;
 
 on_error:
 	printLastError();
 
 	git_remote_free(remote);
+	EM_ASM(
+		if(self.jsgitonmethodfinish) {
+			self.jsgitonmethodfinish();
+		}
+	);
 	return;
+}
+
+int diff_file_cb(const git_diff_delta *delta, float progress, void *payload) {
+	printf("Adding %s\n",delta->old_file.path);
+	jsgitadd(delta->old_file.path);
+}
+
+void jsgitaddfileswithchanges() {
+	git_diff *diff;
+	
+	git_diff_index_to_workdir(&diff, repo, NULL, NULL);
+	git_diff_foreach(diff,&diff_file_cb,NULL,NULL,NULL,NULL);
+
+	git_diff_free(diff);
+}
+
+int jsgitworkdirnumberofdeltas() {
+	git_diff *diff;
+	
+	git_diff_index_to_workdir(&diff, repo, NULL, NULL);
+	int ret = git_diff_num_deltas(diff);
+	git_diff_free(diff);
+	return ret;
 }
 
 void jsgitpush() {
@@ -574,4 +612,10 @@ void jsgitpush() {
 		if (err) printf("ERROR %d: %s\n", err->klass, err->message);
 		else printf("ERROR %d: no detailed info\n", error);
 	}
+	printf("Push done\n");
+	EM_ASM(
+		if(self.jsgitonmethodfinish) {
+			self.jsgitonmethodfinish();
+		}
+	);	
 }

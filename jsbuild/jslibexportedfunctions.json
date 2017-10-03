@@ -7,5 +7,7 @@
     "_jsgitcommit",
     "_jsgitpush",
     "_jsgitpull",
-    "_jsgitprintlatestcommit"
+    "_jsgitprintlatestcommit",
+    "_jsgitworkdirnumberofdeltas",
+    "_jsgitaddfileswithchanges"
 ]
