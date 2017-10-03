@@ -414,7 +414,7 @@ int fetchead_foreach_cb(const char *ref_name,
 		git_merge_options merge_opts = GIT_MERGE_OPTIONS_INIT;
 		git_checkout_options checkout_opts = GIT_CHECKOUT_OPTIONS_INIT;
 		checkout_opts.checkout_strategy = GIT_CHECKOUT_SAFE;
-
+		
 		const git_annotated_commit *mergeheads[] = {fetchhead_annotated_commit};
 		git_merge(repo,mergeheads,
 			1,&merge_opts,
@@ -449,29 +449,32 @@ int fetchead_foreach_cb(const char *ref_name,
 			git_tree *tree;
 			git_index *index;	
 			
-			git_repository_index(&index, repo);	
-			git_index_write_tree(&tree_oid, index);
-			git_index_write(index);
-			git_index_free(index);
-		
-			git_tree_lookup(&tree, repo, &tree_oid);
-							
-			git_commit_create_v(
-				&commit_oid,
-				repo,
-				"HEAD",
-				signature,
-				signature,
-				NULL,
-				"Merge with remote",
-				tree,
-				2, 
-				parent_commit, 
-				fetchhead_commit
-			);
+			git_repository_index(&index, repo);
+			if(git_index_has_conflicts(index)) {
+				printf("Index has conflicts\n");
+			} else {
+				git_index_write_tree(&tree_oid, index);
+				git_tree_lookup(&tree, repo, &tree_oid);
+				
+				git_commit_create_v(
+					&commit_oid,
+					repo,
+					"HEAD",
+					signature,
+					signature,
+					NULL,
+					"Merge with remote",
+					tree,
+					2, 
+					parent_commit, 
+					fetchhead_commit
+				);
+				git_repository_state_cleanup(repo);
+			}
+			
+			git_index_free(index);					
 			git_commit_free(parent_commit);
-			git_commit_free(fetchhead_commit);
-			git_repository_state_cleanup(repo);
+			git_commit_free(fetchhead_commit);			
 		} else if(analysis==(GIT_MERGE_ANALYSIS_NORMAL | GIT_MERGE_ANALYSIS_FASTFORWARD)) {
 			printf("Fast forward\n");
 			git_reference * ref = NULL;		
