@@ -373,6 +373,10 @@ void jsgitcommit(char * comment,char * name, char * email, long time, int offset
 	git_tree_free(tree);	
 }
 
+int jsgitrepositorystate() {
+	return git_repository_state(repo);
+}
+
 void jsgitprintlatestcommit()
 {
 	int rc;
@@ -412,6 +416,8 @@ int fetchead_foreach_cb(const char *ref_name,
 		);			
 			
 		git_merge_options merge_opts = GIT_MERGE_OPTIONS_INIT;
+		merge_opts.file_flags|=GIT_MERGE_FILE_DIFF_MINIMAL;		
+
 		git_checkout_options checkout_opts = GIT_CHECKOUT_OPTIONS_INIT;
 		checkout_opts.checkout_strategy = GIT_CHECKOUT_SAFE;
 		
@@ -451,7 +457,7 @@ int fetchead_foreach_cb(const char *ref_name,
 			
 			git_repository_index(&index, repo);
 			if(git_index_has_conflicts(index)) {
-				printf("Index has conflicts\n");
+				printf("Index has conflicts\n");				
 			} else {
 				git_index_write_tree(&tree_oid, index);
 				git_tree_lookup(&tree, repo, &tree_oid);
@@ -489,6 +495,7 @@ int fetchead_foreach_cb(const char *ref_name,
 			git_repository_state_cleanup(repo);
 		} else if(analysis==GIT_MERGE_ANALYSIS_UP_TO_DATE) {
 			printf("All up to date\n",analysis);
+			git_repository_state_cleanup(repo);
 		} else {
 			printf("Don't know how to merge %d\n");
 		}

@@ -9,5 +9,6 @@
     "_jsgitpull",
     "_jsgitprintlatestcommit",
     "_jsgitworkdirnumberofdeltas",
-    "_jsgitaddfileswithchanges"
+    "_jsgitaddfileswithchanges",
+    "_jsgitrepositorystate"
 ]
