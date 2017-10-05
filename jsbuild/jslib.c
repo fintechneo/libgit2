@@ -297,7 +297,7 @@ static int transfer_progress_cb(const git_transfer_progress *stats, void *payloa
 }
 
 void printLastError() {
-	const const git_error *err = giterr_last();
+	const git_error *err = giterr_last();
 	if (err) printf("ERROR %d: %s\n", err->klass, err->message);	
 }
 
@@ -408,20 +408,26 @@ int fetchead_foreach_cb(const char *ref_name,
 	void *payload)
 {	  
 	if(is_merge) {
-		git_annotated_commit * fetchhead_annotated_commit;			
-						
+		git_annotated_commit * fetchhead_annotated_commit;					
+
 		git_annotated_commit_lookup(&fetchhead_annotated_commit,
 			repo,
 			oid
 		);			
-			
-		git_merge_options merge_opts = GIT_MERGE_OPTIONS_INIT;
-		merge_opts.file_flags|=GIT_MERGE_FILE_DIFF_MINIMAL;		
+					
+		git_merge_options merge_opts = GIT_MERGE_OPTIONS_INIT;		
+		merge_opts.file_flags = 
+			(GIT_MERGE_FILE_STYLE_DIFF3 | GIT_MERGE_FILE_DIFF_MINIMAL);
 
 		git_checkout_options checkout_opts = GIT_CHECKOUT_OPTIONS_INIT;
-		checkout_opts.checkout_strategy = GIT_CHECKOUT_SAFE;
+		checkout_opts.checkout_strategy = (
+			GIT_CHECKOUT_SAFE |
+			GIT_CHECKOUT_ALLOW_CONFLICTS |
+			GIT_CHECKOUT_CONFLICT_STYLE_DIFF3
+		);
 		
-		const git_annotated_commit *mergeheads[] = {fetchhead_annotated_commit};
+		const git_annotated_commit *mergeheads[] = 
+			{fetchhead_annotated_commit};
 		git_merge(repo,mergeheads,
 			1,&merge_opts,
 			&checkout_opts);		
@@ -434,6 +440,8 @@ int fetchead_foreach_cb(const char *ref_name,
 				mergeheads
 				,1);
 		
+		git_annotated_commit_free(fetchhead_annotated_commit);		
+
 		if(analysis==GIT_MERGE_ANALYSIS_NORMAL) {		
 			printf("Normal merge\n");
 			git_signature * signature;
@@ -448,8 +456,8 @@ int fetchead_foreach_cb(const char *ref_name,
 				repo,
 				oid
 			);						
-						
-			git_reference_name_to_id( &oid_parent_commit, repo, "HEAD" );
+									
+			git_reference_name_to_id( &oid_parent_commit, repo, "HEAD" );			
 			git_commit_lookup( &parent_commit, repo, &oid_parent_commit );
 			
 			git_tree *tree;
@@ -494,16 +502,17 @@ int fetchead_foreach_cb(const char *ref_name,
 
 			git_repository_state_cleanup(repo);
 		} else if(analysis==GIT_MERGE_ANALYSIS_UP_TO_DATE) {
-			printf("All up to date\n",analysis);
+			printf("All up to date\n");
 			git_repository_state_cleanup(repo);
 		} else {
-			printf("Don't know how to merge %d\n");
+			printf("Don't know how to merge\n");
 		}
 								
-		git_annotated_commit_free(fetchhead_annotated_commit);
+		
 		
 		printf("Merged %s\n",remote_url);
 	}	
+	return 0;
 }	
 
 void jsgitpull() {
@@ -572,6 +581,7 @@ on_error:
 int diff_file_cb(const git_diff_delta *delta, float progress, void *payload) {
 	printf("Adding %s\n",delta->old_file.path);
 	jsgitadd(delta->old_file.path);
+	return 0;
 }
 
 void jsgitaddfileswithchanges() {
