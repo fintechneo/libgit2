@@ -1,4 +1,4 @@
-emcmake cmake ..
+emcmake cmake -DSONAME=OFF -DBUILD_SHARED_LIBS=OFF -DTHREADSAFE=OFF -DBUILD_CLAR=OFF -DUSE_SSH=OFF ..
 emcmake cmake -build .
 emmake make
 echo "building libgit2.js"
