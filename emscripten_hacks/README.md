@@ -9,7 +9,7 @@ First of all you need to source the emscripten sdk:
 
 Then go into the jsbuild folder and run the build shell script:
 
-    cd jsbuild
+    cd emscripten_hacks
     sh build.sh
 
 You should end up with a libgit2.js file in your jsbuild folder.
