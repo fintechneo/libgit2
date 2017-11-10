@@ -12,14 +12,14 @@
 # > cmake --build . --target install
 
 PROJECT(libgit2 C)
-CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
+CMAKE_MINIMUM_REQUIRED(VERSION 2.8.11)
 CMAKE_POLICY(SET CMP0015 NEW)
-IF (CMAKE_VERSION VERSION_GREATER 3.0)
+IF (NOT CMAKE_VERSION VERSION_LESS 3.1)
 	CMAKE_POLICY(SET CMP0051 NEW)
 ENDIF()
 
 # Add find modules to the path
-SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
+SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${libgit2_SOURCE_DIR}/cmake/Modules/")
 
 INCLUDE(CheckLibraryExists)
 INCLUDE(CheckFunctionExists)
@@ -28,6 +28,7 @@ INCLUDE(CheckStructHasMember)
 INCLUDE(AddCFlagIfSupported)
 INCLUDE(FindPkgConfig)
 INCLUDE(FindThreads)
+INCLUDE(FeatureSummary)
 
 # Build options
 #
@@ -44,17 +45,15 @@ OPTION( LIBGIT2_FILENAME	"Name of the produced binary"			OFF )
 OPTION( USE_SHA1DC			"Use SHA-1 with collision detection"	OFF )
 OPTION( USE_ICONV			"Link with and use iconv library" 		OFF )
 OPTION( USE_SSH				"Link with libssh to enable SSH support" ON )
+OPTION( USE_HTTPS			"Enable HTTPS support. Can be set to a specific backend"	ON )
 OPTION( USE_GSSAPI			"Link with libgssapi for SPNEGO auth"   OFF )
 OPTION( VALGRIND			"Configure build for valgrind"			OFF )
 OPTION( CURL			"Use curl for HTTP if available" ON)
 OPTION( USE_EXT_HTTP_PARSER		"Use system HTTP_Parser if available" ON)
 OPTION( DEBUG_POOL			"Enable debug pool allocator"			OFF )
 OPTION( ENABLE_WERROR			"Enable compilation with -Werror"		OFF )
-
-IF(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-	SET( USE_ICONV ON )
-	FIND_PACKAGE(Security)
-	FIND_PACKAGE(CoreFoundation REQUIRED)
+IF (UNIX AND NOT APPLE)
+	OPTION( ENABLE_REPRODUCIBLE_BUILDS	"Enable reproducible builds" 			OFF )
 ENDIF()
 
 IF(MSVC)
@@ -85,10 +84,6 @@ ENDIF()
 IF(MSVC)
 	# Enable MSVC CRTDBG memory leak reporting when in debug mode.
 	OPTION(MSVC_CRTDBG "Enable CRTDBG memory leak reporting" OFF)
-ENDIF()
-
-IF (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-	OPTION( USE_OPENSSL                     "Link with and use openssl library"             ON )
 ENDIF()
 
 CHECK_STRUCT_HAS_MEMBER ("struct stat" st_mtim "sys/types.h;sys/stat.h"
@@ -122,7 +117,7 @@ FUNCTION(IDE_SPLIT_SOURCES target)
 		GET_TARGET_PROPERTY(sources ${target} SOURCES)
 		FOREACH(source ${sources})
 			IF(source MATCHES ".*/")
-				STRING(REPLACE ${CMAKE_SOURCE_DIR}/ "" rel ${source})
+				STRING(REPLACE ${libgit2_SOURCE_DIR}/ "" rel ${source})
 				IF(rel)
 					STRING(REGEX REPLACE "/([^/]*)$" "" rel ${rel})
 					IF(rel)
@@ -135,14 +130,14 @@ FUNCTION(IDE_SPLIT_SOURCES target)
 	ENDIF()
 ENDFUNCTION()
 
-FILE(STRINGS "${CMAKE_SOURCE_DIR}/include/git2/version.h" GIT2_HEADER REGEX "^#define LIBGIT2_VERSION \"[^\"]*\"$")
+FILE(STRINGS "${libgit2_SOURCE_DIR}/include/git2/version.h" GIT2_HEADER REGEX "^#define LIBGIT2_VERSION \"[^\"]*\"$")
 
 STRING(REGEX REPLACE "^.*LIBGIT2_VERSION \"([0-9]+).*$" "\\1" LIBGIT2_VERSION_MAJOR "${GIT2_HEADER}")
 STRING(REGEX REPLACE "^.*LIBGIT2_VERSION \"[0-9]+\\.([0-9]+).*$" "\\1" LIBGIT2_VERSION_MINOR  "${GIT2_HEADER}")
 STRING(REGEX REPLACE "^.*LIBGIT2_VERSION \"[0-9]+\\.[0-9]+\\.([0-9]+).*$" "\\1" LIBGIT2_VERSION_REV "${GIT2_HEADER}")
 SET(LIBGIT2_VERSION_STRING "${LIBGIT2_VERSION_MAJOR}.${LIBGIT2_VERSION_MINOR}.${LIBGIT2_VERSION_REV}")
 
-FILE(STRINGS "${CMAKE_SOURCE_DIR}/include/git2/version.h" GIT2_HEADER_SOVERSION REGEX "^#define LIBGIT2_SOVERSION [0-9]+$")
+FILE(STRINGS "${libgit2_SOURCE_DIR}/include/git2/version.h" GIT2_HEADER_SOVERSION REGEX "^#define LIBGIT2_SOVERSION [0-9]+$")
 STRING(REGEX REPLACE "^.*LIBGIT2_SOVERSION ([0-9]+)$" "\\1" LIBGIT2_SOVERSION "${GIT2_HEADER_SOVERSION}")
 
 # Platform specific compilation flags
@@ -222,6 +217,16 @@ IF (MSVC)
 	SET(CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO}")
 	SET(CMAKE_SHARED_LINKER_FLAGS_MINSIZEREL "${CMAKE_EXE_LINKER_FLAGS_MINSIZEREL}")
 ELSE ()
+	IF (NOT BUILD_SHARED_LIBS)
+		SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+	ENDIF()
+
+	IF (ENABLE_REPRODUCIBLE_BUILDS)
+		SET(CMAKE_C_ARCHIVE_CREATE "<CMAKE_AR> Dqc <TARGET> <LINK_FLAGS> <OBJECTS>")
+		SET(CMAKE_C_ARCHIVE_APPEND "<CMAKE_AR> Dq  <TARGET> <LINK_FLAGS> <OBJECTS>")
+		SET(CMAKE_C_ARCHIVE_FINISH "<CMAKE_RANLIB> -D <TARGET>")
+	ENDIF()
+
 	SET(CMAKE_C_FLAGS "-D_GNU_SOURCE ${CMAKE_C_FLAGS}")
 
 	MACRO(ENABLE_WARNINGS flag)
@@ -321,3 +326,10 @@ ENDIF ()
 IF (BUILD_EXAMPLES)
 	ADD_SUBDIRECTORY(examples)
 ENDIF ()
+
+IF(CMAKE_VERSION VERSION_GREATER 3)
+	FEATURE_SUMMARY(WHAT ENABLED_FEATURES DISABLED_FEATURES)
+ELSE()
+	PRINT_ENABLED_FEATURES()
+	PRINT_DISABLED_FEATURES()
+ENDIF()
