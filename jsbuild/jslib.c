@@ -1,7 +1,7 @@
 #include "emscripten.h"
 #include <stdio.h>
-#include "stransport_stream.h"
-#include "tls_stream.h"
+#include "streams/stransport.h"
+#include "streams/tls.h"
 #include "../examples/network/common.h"
 #include "git2.h"
 #include "git2/clone.h"
