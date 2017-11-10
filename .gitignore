@@ -32,12 +32,12 @@ msvc/Release/
 tags
 mkmf.log
 
-jsbuild/src
-jsbuild/deps
-jsbuild/CMake*
-jsbuild/libgit2.pc
-jsbuild/Makefile
-jsbuild/*.js
-jsbuild/*.js.mem
+emscripten_hacks/src
+emscripten_hacks/deps
+emscripten_hacks/CMake*
+emscripten_hacks/libgit2.pc
+emscripten_hacks/Makefile
+emscripten_hacks/*.js
+emscripten_hacks/*.js.mem
 
 .vscode
