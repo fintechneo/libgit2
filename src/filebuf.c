@@ -451,7 +451,10 @@ int git_filebuf_commit(git_filebuf *file)
 
 	file->did_rename = true;
 
+	#ifdef APPLY_EMSCRIPTEN_HACKS
 	chmod(file->path_original,0777);
+	#endif
+	
 	git_filebuf_cleanup(file);
 	return 0;
 
