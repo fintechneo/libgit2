@@ -39,6 +39,8 @@ ssize_t emscripten_read(git_stream *stream, void *data, size_t len) {
 		setValue($0,self.gitxhr.readyState,"i32");
 	},&readyState);
 	
+	/*
+	 * We skip this since we are now using a synchronous request
 	while(readyState!=4) {
 		EM_ASM_({
 			console.log("Waiting for data");
@@ -46,7 +48,7 @@ ssize_t emscripten_read(git_stream *stream, void *data, size_t len) {
 		},&readyState);
 		
 		emscripten_sleep(10);
-	}
+	}*/
 	
 	EM_ASM_({
 		if(self.gitxhr) {
@@ -84,14 +86,14 @@ ssize_t emscripten_write(git_stream *stream, const char *data, size_t len, int f
 			self.gitxhr=new XMLHttpRequest();
 			self.gitxhrreadoffset = 0;
 			self.gitxhr.responseType = "arraybuffer";			
-			self.gitxhr.open("GET",data.split("\n")[0].split(" ")[1]);		
+			self.gitxhr.open("GET",data.split("\n")[0].split(" ")[1], false);		
 			self.gitxhr.send();
 		} else if(data.indexOf("POST ")===0) {
 			self.gitxhr=new XMLHttpRequest();
 			self.gitxhrreadoffset = 0;
 			self.gitxhr.responseType = "arraybuffer";			
 			var requestlines = data.split("\n");			
-			self.gitxhr.open("POST",requestlines[0].split(" ")[1]);
+			self.gitxhr.open("POST",requestlines[0].split(" ")[1], false);
 			
 			console.log(data);
 			self.gitxhrdata = null;								

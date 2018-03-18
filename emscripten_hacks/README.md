@@ -21,7 +21,7 @@ Because of CORS restrictions in the browser you cannot read from github directly
     ProxyPass /pathto/mygitrepo.git/ https://github.com/pathto/mygitrepo.git/
     ProxyPassReverse /pathto/mygitrepo.git/ https://github.com/pathto/mygitrepo.git/
 
-When testing with the index.html file included here you should open the web console which will prompt "ready" when loaded.
+When testing with the index.html file included here you should open the web console which will prompt "ready" when loaded. Remember to switch to the libgit2 webworker for typing commands in the console.
 
 Type the commands:
 

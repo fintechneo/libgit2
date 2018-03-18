@@ -1,27 +1,11 @@
 <html>
-    <body>
+    <head>
         
-    <script src="libgit2.js"></script>
+    </head>
+    <body>
+        libgit2 is started as a webworker. Open web console to test it.
+    </body>
     <script>
-        window.onload=function() {
-            var dir="workdir";
-            FS.mkdir(dir,"0777");
-            FS.mount(IDBFS, {}, '/'+dir);
-            FS.chdir("/"+dir);     
-            
-            window.jsgitinit = Module.cwrap("jsgitinit",null,[]);            
-            window.jsgitclone = Module.cwrap("jsgitclone",null,["string","string"]);
-            window.jsgitopenrepo = Module.cwrap("jsgitopenrepo",null,[]);
-            window.jsgitadd = Module.cwrap("jsgitadd",null,["string"]);
-            window.jsgitcommit = Module.cwrap("jsgitcommit",null,["string"]);
-            window.jsgitpush = Module.cwrap("jsgitpush",null,[]);
-            window.jsgitpull = Module.cwrap("jsgitpull",null,[]);
-            window.jsgitshutdown = Module.cwrap("jsgitshutdown",null,[]);
-            window.jsgitprintlatestcommit = Module.cwrap("jsgitprintlatestcommit",null,[]);
-            window.jsgitcommit = Module.cwrap("jsgitcommit",null,["string","string","string","number","number"]);
-            console.log("ready");
-        }
+        new Worker("libgit2_webworker.js");
     </script>
-</body>
 </html>
-    
