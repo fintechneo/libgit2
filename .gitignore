@@ -37,7 +37,5 @@ emscripten_hacks/deps
 emscripten_hacks/CMake*
 emscripten_hacks/libgit2.pc
 emscripten_hacks/Makefile
-emscripten_hacks/*.js
-emscripten_hacks/*.js.mem
 
 .vscode

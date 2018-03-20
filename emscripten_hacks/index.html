@@ -6,6 +6,47 @@
         libgit2 is started as a webworker. Open web console to test it.
     </body>
     <script>
-        new Worker("libgit2_webworker.js");
+        const gitworker = new Worker("stupid_worker.js");
+        const callWorker = (func) =>
+            new Promise((resolve, reject) => {
+                gitworker.onmessage = (msg) => resolve(msg.data);
+                gitworker.postMessage('(' + func.toString() + ')()');
+        });
+
+        async function workerStuff() {
+            // Set up emscripten with libgit2
+            await callWorker(() => {
+                return new Promise((resolve, reject) => {
+                    importScripts("libgit2.js");
+                    Module['onRuntimeInitialized'] = () => {
+
+                        const dir="workdir";
+                        FS.mkdir(dir,"0777");
+                        FS.mount(IDBFS, {}, '/'+dir);
+                        FS.chdir("/"+dir);     
+                        
+                        self.jsgitinit = Module.cwrap("jsgitinit",null,[]);            
+                        self.jsgitclone = Module.cwrap("jsgitclone",null,["string","string"]);
+                        self.jsgitopenrepo = Module.cwrap("jsgitopenrepo",null,[]);
+                        self.jsgitadd = Module.cwrap("jsgitadd",null,["string"]);
+                        self.jsgitcommit = Module.cwrap("jsgitcommit",null,["string"]);
+                        self.jsgitpush = Module.cwrap("jsgitpush",null,[]);
+                        self.jsgitpull = Module.cwrap("jsgitpull",null,[]);
+                        self.jsgitshutdown = Module.cwrap("jsgitshutdown",null,[]);
+                        self.jsgitprintlatestcommit = Module.cwrap("jsgitprintlatestcommit",null,[]);
+                        self.jsgitcommit = Module.cwrap("jsgitcommit",null,["string","string","string","number","number"]);
+                        resolve();
+                    };
+                });
+            });
+            // Call libgit init
+            await callWorker(() => jsgitinit());
+            // Do git clone
+            await callWorker(() => jsgitclone("https://localhost/git/tests/testrepo.git","testrepo"));        
+            
+            console.log('clone done');
+        };
+        workerStuff();
+
     </script>
 </html>
