@@ -615,7 +615,9 @@ int jsgitworkdirnumberofdeltas() {
 int jsgitstatus() {
 	git_status_list *status;
 	git_status_options statusopt = GIT_STATUS_OPTIONS_INIT;
-	
+	EM_ASM(
+		self.jsgitstatusresult = [];
+	);
 	statusopt.show  = GIT_STATUS_SHOW_INDEX_AND_WORKDIR;
 	statusopt.flags = GIT_STATUS_OPT_INCLUDE_UNTRACKED |
 		GIT_STATUS_OPT_RENAMES_HEAD_TO_INDEX |
@@ -665,10 +667,26 @@ int jsgitstatus() {
 		old_path = s->head_to_index->old_file.path;
 		new_path = s->head_to_index->new_file.path;
 
-		if (old_path && new_path && strcmp(old_path, new_path))
+		if (old_path && new_path && strcmp(old_path, new_path)) {
 			printf("#\t%s  %s -> %s\n", istatus, old_path, new_path);
+			EM_ASM_({
+				self.jsgitstatusresult.push({
+					old_path: Pointer_stringify($0),
+					new_path: Pointer_stringify($1),
+					status: Pointer_stringify($2).trim().replace(':', '')
+				});
+			}, old_path, new_path, istatus);
+		}
 		else
+		{
 			printf("#\t%s  %s\n", istatus, old_path ? old_path : new_path);
+			EM_ASM_({
+				self.jsgitstatusresult.push({
+					path: Pointer_stringify($0),
+					status: Pointer_stringify($1).trim().replace(':', '')
+				});
+			}, old_path ? old_path : new_path, istatus);
+		}
 	}
 
 	if (header) {
@@ -716,10 +734,24 @@ int jsgitstatus() {
 		old_path = s->index_to_workdir->old_file.path;
 		new_path = s->index_to_workdir->new_file.path;
 
-		if (old_path && new_path && strcmp(old_path, new_path))
+		if (old_path && new_path && strcmp(old_path, new_path)) {
 			printf("#\t%s  %s -> %s\n", wstatus, old_path, new_path);
-		else
+			EM_ASM_({
+				self.jsgitstatusresult.push({
+					old_path: Pointer_stringify($0),
+					new_path: Pointer_stringify($1),
+					status: Pointer_stringify($2).trim().replace(':', '')
+				});
+			}, old_path, new_path, wstatus);
+		} else {
 			printf("#\t%s  %s\n", wstatus, old_path ? old_path : new_path);
+			EM_ASM_({
+				self.jsgitstatusresult.push({
+					path: Pointer_stringify($0),
+					status: Pointer_stringify($1).trim().replace(':', '')
+				});
+			}, old_path ? old_path : new_path, wstatus);
+		}
 	}
 
 	if (header) {
