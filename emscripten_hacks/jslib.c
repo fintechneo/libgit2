@@ -611,16 +611,11 @@ void jsgitpush() {
 	git_remote* remote = NULL;
 	git_remote_lookup( &remote, repo, "origin" );
 
-	// connect to remote
-	//git_remote_connect( remote, GIT_DIRECTION_PUSH , NULL, NULL, NULL);
-
-	// add a push refspec
-	git_remote_add_push(repo,"origin", "refs/heads/master:refs/heads/master" );
-	if (error != 0) {
-		const git_error *err = giterr_last();
-		if (err) printf("ERROR %d: %s\n", err->klass, err->message);
-		else printf("ERROR %d: no detailed info\n", error);
-	}
+	char *refspec = "refs/heads/master";
+	const git_strarray refspecs = {
+		&refspec,
+		1,
+	};
 
 	// configure options
 	git_push_options options;
@@ -628,16 +623,12 @@ void jsgitpush() {
 
 	// do the push
 	printf("Do the push\n");
-	error = git_remote_upload( remote, NULL, &options );
+	error = git_remote_push( remote, &refspecs, &options);
 	if (error != 0) {
 		const git_error *err = giterr_last();
 		if (err) printf("ERROR %d: %s\n", err->klass, err->message);
 		else printf("ERROR %d: no detailed info\n", error);
 	}
 	printf("Push done\n");
-	EM_ASM(
-		if(self.jsgitonmethodfinish) {
-			self.jsgitonmethodfinish();
-		}
-	);	
+
 }
