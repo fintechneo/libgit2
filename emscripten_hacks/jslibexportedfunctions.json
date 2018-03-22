@@ -4,11 +4,13 @@
     "_jsgitopenrepo",
     "_jsgitclone",
     "_jsgitadd",
+    "_jsgitremove",
     "_jsgitcommit",
     "_jsgitpush",
     "_jsgitpull",
     "_jsgitprintlatestcommit",
     "_jsgitworkdirnumberofdeltas",
     "_jsgitaddfileswithchanges",
-    "_jsgitrepositorystate"
+    "_jsgitrepositorystate",
+    "_jsgitstatus"
 ]
