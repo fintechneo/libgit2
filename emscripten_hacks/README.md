@@ -34,3 +34,4 @@ When the clone is done you can list the folder contents by typing:
 
     FS.readdir("mygitrepo")
 
+A simple demonstration video can be seen here: https://youtu.be/rcBluzpUWE4
