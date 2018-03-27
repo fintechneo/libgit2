@@ -776,6 +776,13 @@ int jsgitstatus() {
 			}
 
 			printf("#\t%s\n", s->index_to_workdir->old_file.path);
+
+			EM_ASM_({
+				self.jsgitstatusresult.push({
+					path: Pointer_stringify($0),
+					status: Pointer_stringify($1).trim().replace(':', '')
+				});
+			}, s->index_to_workdir->old_file.path, "untracked");
 		}
 	}
 
