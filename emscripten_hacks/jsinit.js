@@ -1,0 +1,10 @@
+jsgitinit = cwrap("jsgitinit",null,[]);            
+jsgitclone = cwrap("jsgitclone",null,["string","string"]);
+jsgitopenrepo = cwrap("jsgitopenrepo",null,[]);
+jsgitadd = cwrap("jsgitadd",null,["string"]);
+jsgitcommit = cwrap("jsgitcommit",null,["string"]);
+jsgitpush = cwrap("jsgitpush",null,[]);
+jsgitpull = cwrap("jsgitpull",null,[]);
+jsgitshutdown = cwrap("jsgitshutdown",null,[]);
+jsgitprintlatestcommit = cwrap("jsgitprintlatestcommit",null,[]);
+jsgitcommit = cwrap("jsgitcommit",null,["string","string","string","number","number"]);
