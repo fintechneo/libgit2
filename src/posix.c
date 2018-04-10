@@ -242,11 +242,13 @@ int p_mmap(git_map *out, size_t len, int prot, int flags, int fd, git_off_t offs
 	out->data = NULL;
 	out->len = 0;
 
+	#ifndef APPLY_EMSCRIPTEN_HACKS	
 	if ((prot & GIT_PROT_WRITE) && ((flags & GIT_MAP_TYPE) == GIT_MAP_SHARED)) {
 		giterr_set(GITERR_OS, "trying to map shared-writeable");
 		return -1;
 	}
-
+	#endif
+	
 	out->data = malloc(len);
 	GITERR_CHECK_ALLOC(out->data);
 
@@ -265,7 +267,7 @@ int p_munmap(git_map *map)
 {
 	assert(map != NULL);
 	free(map->data);
-
+	
 	return 0;
 }
 
