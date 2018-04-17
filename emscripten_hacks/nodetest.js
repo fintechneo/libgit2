@@ -9,6 +9,7 @@ lg.onRuntimeInitialized = () => {
     FS.chdir('/working');
     jsgitinit();
     jsgitinitrepo(1);
+    jsgitsetuser('Test user','test@example.com');
     console.log(FS.readdir('.'));
     
     console.log('Created bare repository');    
@@ -20,6 +21,7 @@ lg.onRuntimeInitialized = () => {
     FS.mount(MEMFS, { root: '.' }, '/working2');
     FS.chdir('/working2');
     jsgitclone('/working', '.');
+    jsgitsetuser('Test user','test@example.com');
     FS.writeFile('test.txt', 'line1\nline2\n\line3');
     jsgitadd('test.txt');
     jsgitcommit(
@@ -51,7 +53,7 @@ lg.onRuntimeInitialized = () => {
     FS.mount(MEMFS, { root: '.' }, '/working3');
     FS.chdir('/working3');
     jsgitclone('/working', '.');
-
+    jsgitsetuser('Test user','test@example.com');
     FS.writeFile('test.txt', 'line1\nline2 modify 2 pick me\n\line3');
     jsgitadd('test.txt');
     jsgitcommit(
@@ -118,6 +120,39 @@ lg.onRuntimeInitialized = () => {
     
     const latest = FS.readFile('test.txt', {encoding: 'utf8'});
     console.log(latest);    
+
+    FS.writeFile('test.txt', 'Total change');
+    jsgitadd('test.txt');
+    jsgitcommit(
+        'Total change',
+        'emscripten', 'emscripten',
+        new Date().getTime() / 1000,
+        new Date().getTimezoneOffset()
+    );
+    jsgitpush();
+    jsgitshutdown();
+
+    // Normal merge after conflicts
+    FS.chdir('/working2');
+    jsgitinit();
+    jsgitopenrepo('.');
+    
+    FS.writeFile('test2.txt', 'New file');
+    jsgitadd('test2.txt');
+    jsgitcommit(
+        'New file',
+        'emscripten', 'emscripten',
+        new Date().getTime() / 1000,
+        new Date().getTimezoneOffset()
+    );
+    
+    jsgitpull();
+
+    jsgitprintlatestcommit();
+        
+    
+    console.log(FS.readFile('test.txt', {encoding: 'utf8'}));
+
     jsgitshutdown();
 };
 

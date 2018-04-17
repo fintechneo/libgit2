@@ -2,6 +2,7 @@
     "_jsgitinit",    
     "_jsgitinitrepo",
     "_jsgitshutdown",
+    "_jsgitsetuser",
     "_jsgitopenrepo",
     "_jsgitclone",
     "_jsgitadd",

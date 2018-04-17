@@ -343,7 +343,7 @@ void jsgitremove(const char * path) {
 	git_index_free(index);
 }
 
-void jsgitcommit(char * comment,char * name, char * email, long time, int offset) {
+void jsgitcommit(char * comment) {
 	git_oid commit_oid,tree_oid,oid_parent_commit;
 	git_commit *parent_commit;
 	git_tree *tree;
@@ -366,7 +366,7 @@ void jsgitcommit(char * comment,char * name, char * email, long time, int offset
 
 	
 	git_signature *signature;	
-	git_signature_new(&signature, name, email, time, offset);
+	git_signature_default(&signature, repo);
 	
 	error = git_commit_create_v(
 		&commit_oid,
@@ -509,9 +509,10 @@ int fetchead_foreach_cb(const char *ref_name,
 				git_index_conflict_iterator_free(conflicts);
 				
 			} else {
+				printf("No conflicts\n");
 				git_index_write_tree(&tree_oid, index);
 				git_tree_lookup(&tree, repo, &tree_oid);
-				
+						
 				git_commit_create_v(
 					&commit_oid,
 					repo,
@@ -525,6 +526,7 @@ int fetchead_foreach_cb(const char *ref_name,
 					parent_commit, 
 					fetchhead_commit
 				);
+				
 				git_repository_state_cleanup(repo);
 			}
 			
@@ -555,30 +557,37 @@ int fetchead_foreach_cb(const char *ref_name,
 	return 0;
 }	
 
+void jsgitsetuser(const char *name, const char *email) {
+	git_config *config;
+	
+	git_repository_config(&config, repo);
+	git_config_set_string(config, "user.name", name);
+	git_config_set_string(config, "user.email", email);
+	git_config_free(config);
+}
+
 void jsgitresolvemergecommit() {	
 	git_index *index;
 	git_repository_index(&index, repo);	
 	
 	git_oid commit_oid, tree_oid, oid_parent_commit, oid_fetchhead_commit;
-	git_tree *tree;
+	git_tree * tree;
 	
+	git_index_write_tree(&tree_oid, index);
+	git_tree_lookup(&tree, repo, &tree_oid);
+
 	git_signature * signature;
 	git_signature_default(&signature,repo);
 			
 	git_commit * parent_commit;	
 	git_commit * fetchhead_commit;
 	
-	printf("%d %d\n", parent_commit, fetchhead_commit);
 	git_reference_name_to_id( &oid_parent_commit, repo, "HEAD" );
 	git_commit_lookup( &parent_commit, repo, &oid_parent_commit );
 
 	git_reference_name_to_id( &oid_fetchhead_commit, repo, "FETCH_HEAD" );			
 	git_commit_lookup( &fetchhead_commit, repo, &oid_fetchhead_commit );	
-		
 	
-	git_index_write_tree(&tree_oid, index);
-	git_tree_lookup(&tree, repo, &tree_oid);
-
 	git_commit_create_v(
 		&commit_oid,
 		repo,
