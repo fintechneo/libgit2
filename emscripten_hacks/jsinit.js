@@ -1,5 +1,6 @@
 jsgitinit = cwrap('jsgitinit', null, []);
 jsgitclone = cwrap('jsgitclone', null, ['string', 'string']);
+jsgitinitrepo = cwrap('jsgitinitrepo', null, ['number']);
 jsgitopenrepo = cwrap('jsgitopenrepo', null, []);
 jsgitadd = cwrap('jsgitadd', null, ['string']);
 jsgitremove = cwrap('jsgitremove', null, ['string']);

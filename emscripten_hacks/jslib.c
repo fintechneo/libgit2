@@ -21,7 +21,7 @@ typedef struct progress_data {
 int emscripten_connect(git_stream *stream) {
 	printf("Connecting\n");	
 	EM_ASM(
-		self.gitxhrdata = null;
+		gitxhrdata = null;
 	);
 	return 1;
 }
@@ -31,12 +31,12 @@ ssize_t emscripten_read(git_stream *stream, void *data, size_t len) {
 	
 	unsigned int readyState = 0;
 	EM_ASM_({		
-		if(self.gitxhrdata!==null) {
-			console.log("sending post data",self.gitxhrdata.length);
-			self.gitxhr.send(self.gitxhrdata.buffer);			
-			self.gitxhrdata = null;
+		if(gitxhrdata!==null) {
+			console.log("sending post data",gitxhrdata.length);
+			gitxhr.send(gitxhrdata.buffer);			
+			gitxhrdata = null;
 		} 
-		setValue($0,self.gitxhr.readyState,"i32");
+		setValue($0,gitxhr.readyState,"i32");
 	},&readyState);
 	
 	/*
@@ -44,26 +44,26 @@ ssize_t emscripten_read(git_stream *stream, void *data, size_t len) {
 	while(readyState!=4) {
 		EM_ASM_({
 			console.log("Waiting for data");
-			setValue($0,self.gitxhr.readyState,"i32");
+			setValue($0,gitxhr.readyState,"i32");
 		},&readyState);
 		
 		emscripten_sleep(10);
 	}*/
 	
 	EM_ASM_({
-		if(self.gitxhr) {
-			var arrayBuffer = self.gitxhr.response; // Note: not oReq.responseText
+		if(gitxhr) {
+			var arrayBuffer = gitxhr.response; // Note: not oReq.responseText
 					
-			if (self.gitxhr.readyState===4 && arrayBuffer) {		
-				var availlen = (arrayBuffer.byteLength-self.gitxhrreadoffset);						
+			if (gitxhr.readyState===4 && arrayBuffer) {		
+				var availlen = (arrayBuffer.byteLength-gitxhrreadoffset);						
 				var len = availlen > $2 ? $2 : availlen;
 								
-				var byteArray = new Uint8Array(arrayBuffer,self.gitxhrreadoffset,len);		
-				//console.log("read from ",arrayBuffer.byteLength,self.gitxhrreadoffset,len,byteArray[0]);
+				var byteArray = new Uint8Array(arrayBuffer,gitxhrreadoffset,len);		
+				//console.log("read from ",arrayBuffer.byteLength,gitxhrreadoffset,len,byteArray[0]);
 				writeArrayToMemory(byteArray,$0);
 				setValue($1,len,"i32");
 				
-				self.gitxhrreadoffset+=len;				
+				gitxhrreadoffset+=len;				
 			}
 		} else {
 			setValue($1,-1,"i32");
@@ -83,36 +83,36 @@ ssize_t emscripten_write(git_stream *stream, const char *data, size_t len, int f
 		var data = Pointer_stringify($0);
 		
 		if(data.indexOf("GET ")===0) {				
-			self.gitxhr=new XMLHttpRequest();
-			self.gitxhrreadoffset = 0;
-			self.gitxhr.responseType = "arraybuffer";			
-			self.gitxhr.open("GET",data.split("\n")[0].split(" ")[1], false);		
-			self.gitxhr.send();
+			gitxhr=new XMLHttpRequest();
+			gitxhrreadoffset = 0;
+			gitxhr.responseType = "arraybuffer";			
+			gitxhr.open("GET",data.split("\n")[0].split(" ")[1], false);		
+			gitxhr.send();
 		} else if(data.indexOf("POST ")===0) {
-			self.gitxhr=new XMLHttpRequest();
-			self.gitxhrreadoffset = 0;
-			self.gitxhr.responseType = "arraybuffer";			
+			gitxhr=new XMLHttpRequest();
+			gitxhrreadoffset = 0;
+			gitxhr.responseType = "arraybuffer";			
 			var requestlines = data.split("\n");			
-			self.gitxhr.open("POST",requestlines[0].split(" ")[1], false);
+			gitxhr.open("POST",requestlines[0].split(" ")[1], false);
 			
 			console.log(data);
-			self.gitxhrdata = null;								
+			gitxhrdata = null;								
 			for(var n=1;n<requestlines.length;n++) {
 				if(requestlines[n].indexOf("Content-Type")===0) {
-					self.gitxhr.setRequestHeader("Content-Type",requestlines[n].split(": ")[1].trim());
+					gitxhr.setRequestHeader("Content-Type",requestlines[n].split(": ")[1].trim());
 				}	
 			}			
 		} else {
-			if(self.gitxhrdata===null) {				
+			if(gitxhrdata===null) {				
 				console.log("New post data",$1,data);
-				self.gitxhrdata = new Uint8Array($1);
-				self.gitxhrdata.set(new Uint8Array(Module.HEAPU8.buffer,$0,$1),0);				
+				gitxhrdata = new Uint8Array($1);
+				gitxhrdata.set(new Uint8Array(Module.HEAPU8.buffer,$0,$1),0);				
 			} else {
-				var appended = new Uint8Array(self.gitxhrdata.length+$1);
-				appended.set(self.gitxhrdata,0);
-				appended.set(new Uint8Array(Module.HEAPU8.buffer,$0,$1),self.gitxhrdata.length);
-				self.gitxhrdata = appended;										
-				console.log("Appended post data",$1,self.gitxhrdata.length,data);
+				var appended = new Uint8Array(gitxhrdata.length+$1);
+				appended.set(gitxhrdata,0);
+				appended.set(new Uint8Array(Module.HEAPU8.buffer,$0,$1),gitxhrdata.length);
+				gitxhrdata = appended;										
+				console.log("Appended post data",$1,gitxhrdata.length,data);
 			}
 		}
 	},data,len);
@@ -309,17 +309,27 @@ void jsgitinit() {
 	printf("libgit2 for javascript initialized\n");
 }
 
+/**
+ * Initialize repository in current directory
+ */
+void jsgitinitrepo(int bare) {
+	git_repository_init_options initopts = GIT_REPOSITORY_INIT_OPTIONS_INIT;	
+
+	if (bare)
+		initopts.flags |= GIT_REPOSITORY_INIT_BARE;
+
+	git_repository_init(&repo, ".", &initopts);
+}
+
+/**
+ * Open repository in current directory
+ */
 void jsgitopenrepo() {
 	git_repository_open(&repo, ".");
 }
 
 void jsgitclone(char * url, char * localdir) {			
-	cloneremote(url,localdir);	
-	EM_ASM(
-		if(self.jsgitonmethodfinish) {
-			self.jsgitonmethodfinish();
-		}
-	);		
+	cloneremote(url,localdir);		
 }
 
 void jsgitadd(const char * path) {	
@@ -568,23 +578,14 @@ void jsgitpull() {
 	
 	//git_repository_state_cleanup(repo);
 
-	//printf("Pull done\n");
-	EM_ASM(
-		if(self.jsgitonmethodfinish) {
-			self.jsgitonmethodfinish();
-		}
-	);	
+	printf("Pull done\n");
+		
 	return;
 
 on_error:
 	printLastError();
 
-	git_remote_free(remote);
-	EM_ASM(
-		if(self.jsgitonmethodfinish) {
-			self.jsgitonmethodfinish();
-		}
-	);
+	git_remote_free(remote);	
 	return;
 }
 
@@ -616,7 +617,7 @@ int jsgitstatus() {
 	git_status_list *status;
 	git_status_options statusopt = GIT_STATUS_OPTIONS_INIT;
 	EM_ASM(
-		self.jsgitstatusresult = [];
+		jsgitstatusresult = [];
 	);
 	statusopt.show  = GIT_STATUS_SHOW_INDEX_AND_WORKDIR;
 	statusopt.flags = GIT_STATUS_OPT_INCLUDE_UNTRACKED |
@@ -670,7 +671,7 @@ int jsgitstatus() {
 		if (old_path && new_path && strcmp(old_path, new_path)) {
 			printf("#\t%s  %s -> %s\n", istatus, old_path, new_path);
 			EM_ASM_({
-				self.jsgitstatusresult.push({
+				jsgitstatusresult.push({
 					old_path: Pointer_stringify($0),
 					new_path: Pointer_stringify($1),
 					status: Pointer_stringify($2).trim().replace(':', '')
@@ -681,7 +682,7 @@ int jsgitstatus() {
 		{
 			printf("#\t%s  %s\n", istatus, old_path ? old_path : new_path);
 			EM_ASM_({
-				self.jsgitstatusresult.push({
+				jsgitstatusresult.push({
 					path: Pointer_stringify($0),
 					status: Pointer_stringify($1).trim().replace(':', '')
 				});
@@ -737,7 +738,7 @@ int jsgitstatus() {
 		if (old_path && new_path && strcmp(old_path, new_path)) {
 			printf("#\t%s  %s -> %s\n", wstatus, old_path, new_path);
 			EM_ASM_({
-				self.jsgitstatusresult.push({
+				jsgitstatusresult.push({
 					old_path: Pointer_stringify($0),
 					new_path: Pointer_stringify($1),
 					status: Pointer_stringify($2).trim().replace(':', '')
@@ -746,7 +747,7 @@ int jsgitstatus() {
 		} else {
 			printf("#\t%s  %s\n", wstatus, old_path ? old_path : new_path);
 			EM_ASM_({
-				self.jsgitstatusresult.push({
+				jsgitstatusresult.push({
 					path: Pointer_stringify($0),
 					status: Pointer_stringify($1).trim().replace(':', '')
 				});
@@ -778,7 +779,7 @@ int jsgitstatus() {
 			printf("#\t%s\n", s->index_to_workdir->old_file.path);
 
 			EM_ASM_({
-				self.jsgitstatusresult.push({
+				jsgitstatusresult.push({
 					path: Pointer_stringify($0),
 					status: Pointer_stringify($1).trim().replace(':', '')
 				});
