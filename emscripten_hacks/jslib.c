@@ -312,13 +312,8 @@ void jsgitinit() {
 /**
  * Initialize repository in current directory
  */
-void jsgitinitrepo(int bare) {
-	git_repository_init_options initopts = GIT_REPOSITORY_INIT_OPTIONS_INIT;	
-
-	if (bare)
-		initopts.flags |= GIT_REPOSITORY_INIT_BARE;
-
-	git_repository_init(&repo, ".", &initopts);
+void jsgitinitrepo(unsigned int bare) {
+	git_repository_init(&repo, ".", bare);
 }
 
 /**
@@ -417,7 +412,9 @@ void jsgitprintlatestcommit()
 	}	
 }
 
+
 void jsgitshutdown() {
+	git_repository_free(repo);
 	git_libgit2_shutdown();
 }
 
@@ -448,9 +445,11 @@ int fetchead_foreach_cb(const char *ref_name,
 		
 		const git_annotated_commit *mergeheads[] = 
 			{fetchhead_annotated_commit};
+
 		git_merge(repo,mergeheads,
-			1,&merge_opts,
-			&checkout_opts);		
+			1,
+			&merge_opts,
+			&checkout_opts);
 				
 		git_merge_analysis_t analysis;
 		git_merge_preference_t preference = GIT_MERGE_PREFERENCE_NONE;
@@ -468,8 +467,9 @@ int fetchead_foreach_cb(const char *ref_name,
 			git_signature_default(&signature,repo);
 						
 			git_oid commit_oid,oid_parent_commit,tree_oid;
+			
 			git_commit * parent_commit;
-			git_commit * commit = NULL; /* the result */
+			
 			git_commit * fetchhead_commit;
 
 			git_commit_lookup(&fetchhead_commit,
@@ -485,7 +485,29 @@ int fetchead_foreach_cb(const char *ref_name,
 			
 			git_repository_index(&index, repo);
 			if(git_index_has_conflicts(index)) {
-				printf("Index has conflicts\n");				
+				printf("Index has conflicts\n");
+
+				git_index_conflict_iterator *conflicts;
+				const git_index_entry *ancestor;
+				const git_index_entry *our;
+				const git_index_entry *their;
+				int err = 0;
+
+				git_index_conflict_iterator_new(&conflicts, index);
+
+				while ((err = git_index_conflict_next(&ancestor, &our, &their, conflicts)) == 0) {
+					fprintf(stderr, "conflict: a:%s o:%s t:%s\n",
+							ancestor ? ancestor->path : "NULL",
+							our->path ? our->path : "NULL",
+							their->path ? their->path : "NULL");
+				}
+
+				if (err != GIT_ITEROVER) {
+					fprintf(stderr, "error iterating conflicts\n");
+				}
+
+				git_index_conflict_iterator_free(conflicts);
+				
 			} else {
 				git_index_write_tree(&tree_oid, index);
 				git_tree_lookup(&tree, repo, &tree_oid);
@@ -527,13 +549,57 @@ int fetchead_foreach_cb(const char *ref_name,
 		} else {
 			printf("Don't know how to merge\n");
 		}
-								
-		
-		
+												
 		printf("Merged %s\n",remote_url);
 	}	
 	return 0;
 }	
+
+void jsgitresolvemergecommit() {	
+	git_index *index;
+	git_repository_index(&index, repo);	
+	
+	git_oid commit_oid, tree_oid, oid_parent_commit, oid_fetchhead_commit;
+	git_tree *tree;
+	
+	git_signature * signature;
+	git_signature_default(&signature,repo);
+			
+	git_commit * parent_commit;	
+	git_commit * fetchhead_commit;
+	
+	printf("%d %d\n", parent_commit, fetchhead_commit);
+	git_reference_name_to_id( &oid_parent_commit, repo, "HEAD" );
+	git_commit_lookup( &parent_commit, repo, &oid_parent_commit );
+
+	git_reference_name_to_id( &oid_fetchhead_commit, repo, "FETCH_HEAD" );			
+	git_commit_lookup( &fetchhead_commit, repo, &oid_fetchhead_commit );	
+		
+	
+	git_index_write_tree(&tree_oid, index);
+	git_tree_lookup(&tree, repo, &tree_oid);
+
+	git_commit_create_v(
+		&commit_oid,
+		repo,
+		"HEAD",
+		signature,
+		signature,
+		NULL,
+		"Resolved conflicts and merge with remote",
+		tree,
+		2, 
+		parent_commit,
+		fetchhead_commit
+	);	
+
+	git_repository_state_cleanup(repo);
+	git_signature_free(signature);
+	git_index_free(index);		
+	git_tree_free(tree);			
+	git_commit_free(parent_commit);
+	git_commit_free(fetchhead_commit);			
+}
 
 void jsgitpull() {
 	git_remote *remote = NULL;

@@ -3,6 +3,7 @@ jsgitclone = cwrap('jsgitclone', null, ['string', 'string']);
 jsgitinitrepo = cwrap('jsgitinitrepo', null, ['number']);
 jsgitopenrepo = cwrap('jsgitopenrepo', null, []);
 jsgitadd = cwrap('jsgitadd', null, ['string']);
+jsgitresolvemergecommit = cwrap('jsgitresolvemergecommit', null, ['']);
 jsgitremove = cwrap('jsgitremove', null, ['string']);
 jsgitworkdirnumberofdeltas = cwrap('jsgitworkdirnumberofdeltas', 'number', []);
 jsgitstatus = cwrap('jsgitstatus', 'number', []);

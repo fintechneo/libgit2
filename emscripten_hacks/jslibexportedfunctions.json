@@ -9,6 +9,7 @@
     "_jsgitcommit",
     "_jsgitpush",
     "_jsgitpull",
+    "_jsgitresolvemergecommit",
     "_jsgitprintlatestcommit",
     "_jsgitworkdirnumberofdeltas",
     "_jsgitaddfileswithchanges",
