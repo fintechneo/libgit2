@@ -25,10 +25,7 @@ lg.onRuntimeInitialized = () => {
     FS.writeFile('test.txt', 'line1\nline2\n\line3');
     jsgitadd('test.txt');
     jsgitcommit(
-        'Revision 1',
-        'emscripten', 'emscripten',
-        new Date().getTime() / 1000,
-        new Date().getTimezoneOffset()
+        'Revision 1'
     );
     jsgitpush();
     jsgitprintlatestcommit();
@@ -38,10 +35,7 @@ lg.onRuntimeInitialized = () => {
     FS.writeFile('test.txt', 'line1\nline2 modify 1\n\line3');
     jsgitadd('test.txt');
     jsgitcommit(
-        'Revision 2',
-        'emscripten', 'emscripten',
-        new Date().getTime() / 1000,
-        new Date().getTimezoneOffset()
+        'Revision 2'
     );
     
     jsgitshutdown();
@@ -57,10 +51,7 @@ lg.onRuntimeInitialized = () => {
     FS.writeFile('test.txt', 'line1\nline2 modify 2 pick me\n\line3');
     jsgitadd('test.txt');
     jsgitcommit(
-        'This will be a conflict',
-        'emscripten', 'emscripten',
-        new Date().getTime() / 1000,
-        new Date().getTimezoneOffset()
+        'This will be a conflict'
     );
     jsgitpush();
     jsgitprintlatestcommit();
@@ -124,10 +115,7 @@ lg.onRuntimeInitialized = () => {
     FS.writeFile('test.txt', 'Total change');
     jsgitadd('test.txt');
     jsgitcommit(
-        'Total change',
-        'emscripten', 'emscripten',
-        new Date().getTime() / 1000,
-        new Date().getTimezoneOffset()
+        'Total change'
     );
     jsgitpush();
     jsgitshutdown();
@@ -137,22 +125,46 @@ lg.onRuntimeInitialized = () => {
     jsgitinit();
     jsgitopenrepo('.');
     
-    FS.writeFile('test2.txt', 'New file');
+    FS.writeFile('test2.txt', 'Line1\nLine2\nLine3\nLine4\n');
     jsgitadd('test2.txt');
     jsgitcommit(
         'New file',
-        'emscripten', 'emscripten',
-        new Date().getTime() / 1000,
-        new Date().getTimezoneOffset()
     );
     
     jsgitpull();
-
+    jsgitpush();
     jsgitprintlatestcommit();
-        
-    
+                
     console.log(FS.readFile('test.txt', {encoding: 'utf8'}));
 
     jsgitshutdown();
+
+    jsgitinit();
+
+    // Now change the new file in working3
+
+    FS.chdir('/working3');
+    jsgitinit();
+    jsgitopenrepo('.');
+
+    jsgitpull();
+    FS.writeFile('test2.txt', 'Line1 changed in working3\nLine2\nLine3\nLine4\n');
+    jsgitadd('test2.txt');
+    jsgitcommit('changed line 1');
+    jsgitpush();
+
+    jsgitshutdown();
+    
+    // Change some other lines and try merge
+    FS.chdir('/working2');
+    jsgitinit();
+    jsgitopenrepo('.');
+    FS.writeFile('test2.txt', 'Line1\nLine2\nLine3\nLine4 changed in working2\n');
+    jsgitadd('test2.txt');
+    jsgitcommit('changed line 4');
+
+    jsgitpull();
+    console.log('Merge with both changing the same file:')
+    console.log(FS.readFile('test2.txt', {encoding: 'utf8'}));
 };
 
