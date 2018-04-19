@@ -65,7 +65,13 @@ lg.onRuntimeInitialized = () => {
 
     jsgitprintlatestcommit();
         
-    
+    console.log('Should show a conflict here');
+    jsgitstatus();
+    console.log(jsgitstatusresult);
+
+    if(jsgitstatusresult.length === 0) {
+        throw('Should be a conflict');
+    }
     const conflict = FS.readFile('test.txt', {encoding: 'utf8'});
     console.log(conflict);
 

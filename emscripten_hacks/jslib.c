@@ -882,6 +882,45 @@ int jsgitstatus() {
 		}
 	}
 
+	git_index *index;	
+	git_repository_index(&index, repo);	
+	if(git_index_has_conflicts(index)) {
+		printf("Index has conflicts\n");
+
+		git_index_conflict_iterator *conflicts;
+		const git_index_entry *ancestor;
+		const git_index_entry *our;
+		const git_index_entry *their;
+		int err = 0;
+
+		git_index_conflict_iterator_new(&conflicts, index);
+
+		while ((err = git_index_conflict_next(&ancestor, &our, &their, conflicts)) == 0) {
+			fprintf(stderr, "conflict: a:%s o:%s t:%s\n",
+					ancestor ? ancestor->path : "NULL",
+					our->path ? our->path : "NULL",
+					their->path ? their->path : "NULL");
+			EM_ASM_({
+				jsgitstatusresult.push({
+						ancestor: Pointer_stringify($0),
+						our: Pointer_stringify($0),
+						their: Pointer_stringify($0),
+						status: 'conflict'
+					});
+				}, ancestor ? ancestor->path : "NULL",
+						our->path ? our->path : "NULL",
+						their->path ? their->path : "NULL"
+			);
+		}
+
+		if (err != GIT_ITEROVER) {
+			fprintf(stderr, "error iterating conflicts\n");
+		}
+
+		git_index_conflict_iterator_free(conflicts);
+	}
+	git_index_free(index);
+	
 	if (!changes_in_index && changed_in_workdir) {
 		printf("no changes added to commit (use \"git add\" and/or \"git commit -a\")\n");
 		return 0;
