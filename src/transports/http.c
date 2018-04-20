@@ -698,8 +698,13 @@ replay:
 			s->chunk_buffer_len = 0;
 
 			/* Write the final chunk. */
+			/*
+			
+			// Removed. Works with regular git backend, but not with Eclipse JGit which expects
+			// EOF here and complains if there are more data
+
 			if (git_stream_write(t->io, "0\r\n\r\n", 5, 0) < 0)
-				return -1;
+				return -1;*/
 		}
 
 		s->received_response = 1;
