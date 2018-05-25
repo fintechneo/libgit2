@@ -4,6 +4,9 @@
  * To use: git_stream_register_tls(git_open_emscripten_stream);
  * 
  * If you need to access another domain, you should set the Module.jsgithost to e.g. "https://somegitdomain.com"
+ * You can also add custom headers by setting the Module.jsgitheaders. Example:
+ * 
+ * Module.jsgitheaders = [{name: 'Authorization', value: 'Bearer TOKEN'}]
  * 
  * Author: Peter Johan Salomonsen ( https://github.com/petersalomonsen ) 
  */
@@ -77,12 +80,19 @@ ssize_t emscripten_write(git_stream *stream, const char *data, size_t len, int f
 		var data = Pointer_stringify($0);
 		
         var host = Module.jsgithost ? Module.jsgithost : '';
+		var headers = Module.jsgitheaders ? Module.jsgitheaders : [];
+		function addHeaders() {
+			for(var n=0; n<headers.length; n++) {
+				gitxhr.setRequestHeader(headers[n].name, headers[n].value);
+			}
+		}
 
 		if(data.indexOf("GET ")===0) {				
 			gitxhr=new XMLHttpRequest();
 			gitxhrreadoffset = 0;
 			gitxhr.responseType = "arraybuffer";			
 			gitxhr.open("GET",host + data.split("\n")[0].split(" ")[1], false);		
+			addHeaders();
 			gitxhr.send();
 		} else if(data.indexOf("POST ")===0) {
 			gitxhr=new XMLHttpRequest();
@@ -90,7 +100,7 @@ ssize_t emscripten_write(git_stream *stream, const char *data, size_t len, int f
 			gitxhr.responseType = "arraybuffer";			
 			var requestlines = data.split("\n");			
 			gitxhr.open("POST", host + requestlines[0].split(" ")[1], false);
-			
+			addHeaders();
 			console.log(data);
 			gitxhrdata = null;								
 			for(var n=1;n<requestlines.length;n++) {
