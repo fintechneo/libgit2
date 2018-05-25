@@ -1,7 +1,7 @@
 A hack to build libgit2 with emscripten and run in the browser
 ==============================================================
 
-The build-setup here is tested with Ubuntu 16.04 and latest emscripten sdk (1.37.9)
+The build-setup here is tested with Ubuntu 16.04 and latest emscripten sdk (1.37.36)
 
 First of all you need to source the emscripten sdk:
 
