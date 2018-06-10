@@ -228,6 +228,26 @@ void test_worktree_worktree__init(void)
 	git_repository_free(repo);
 }
 
+void test_worktree_worktree__add_from_bare(void)
+{
+	git_worktree *wt;
+	git_repository *repo, *wtrepo;
+
+	repo = cl_git_sandbox_init("short_tag.git");
+
+	cl_assert_equal_i(1, git_repository_is_bare(repo));
+	cl_assert_equal_i(0, git_repository_is_worktree(repo));
+
+	cl_git_pass(git_worktree_add(&wt, repo, "worktree-frombare", "worktree-frombare", NULL));
+	cl_git_pass(git_repository_open(&wtrepo, "worktree-frombare"));
+	cl_assert_equal_i(0, git_repository_is_bare(wtrepo));
+	cl_assert_equal_i(1, git_repository_is_worktree(wtrepo));
+
+	git_worktree_free(wt);
+	git_repository_free(repo);
+	git_repository_free(wtrepo);
+}
+
 void test_worktree_worktree__add_locked(void)
 {
 	git_worktree *wt;
@@ -300,6 +320,7 @@ void test_worktree_worktree__add_with_explicit_branch(void)
 	git_reference_free(branch);
 	git_reference_free(wthead);
 	git_repository_free(wtrepo);
+	git_worktree_free(wt);
 }
 
 
@@ -382,6 +403,29 @@ void test_worktree_worktree__validate(void)
 	cl_git_pass(git_worktree_lookup(&wt, fixture.repo, "testrepo-worktree"));
 	cl_git_pass(git_worktree_validate(wt));
 
+	git_worktree_free(wt);
+}
+
+void test_worktree_worktree__name(void)
+{
+	git_worktree *wt;
+
+	cl_git_pass(git_worktree_lookup(&wt, fixture.repo, "testrepo-worktree"));
+	cl_assert_equal_s(git_worktree_name(wt), "testrepo-worktree");
+	
+	git_worktree_free(wt);
+}
+
+void test_worktree_worktree__path(void)
+{
+	git_worktree *wt;
+	git_buf expected_path = GIT_BUF_INIT;
+
+	cl_git_pass(git_buf_joinpath(&expected_path, clar_sandbox_path(), "testrepo-worktree"));
+	cl_git_pass(git_worktree_lookup(&wt, fixture.repo, "testrepo-worktree"));
+	cl_assert_equal_s(git_worktree_path(wt), expected_path.ptr);
+	
+	git_buf_free(&expected_path);
 	git_worktree_free(wt);
 }
 

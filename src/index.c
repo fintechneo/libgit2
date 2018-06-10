@@ -884,11 +884,13 @@ static int index_entry_create(
 	git_index_entry **out,
 	git_repository *repo,
 	const char *path,
+	struct stat *st,
 	bool from_workdir)
 {
 	size_t pathlen = strlen(path), alloclen;
 	struct entry_internal *entry;
 	unsigned int path_valid_flags = GIT_PATH_REJECT_INDEX_DEFAULTS;
+	uint16_t mode = 0;
 
 	/* always reject placing `.git` in the index and directory traversal.
 	 * when requested, disallow platform-specific filenames and upgrade to
@@ -896,8 +898,10 @@ static int index_entry_create(
 	 */
 	if (from_workdir)
 		path_valid_flags |= GIT_PATH_REJECT_WORKDIR_DEFAULTS;
+	if (st)
+		mode = st->st_mode;
 
-	if (!git_path_isvalid(repo, path, path_valid_flags)) {
+	if (!git_path_isvalid(repo, path, mode, path_valid_flags)) {
 		giterr_set(GITERR_INDEX, "invalid path: '%s'", path);
 		return -1;
 	}
@@ -922,15 +926,35 @@ static int index_entry_init(
 {
 	int error = 0;
 	git_index_entry *entry = NULL;
+	git_buf path = GIT_BUF_INIT;
 	struct stat st;
 	git_oid oid;
+	git_repository *repo;
 
 	if (INDEX_OWNER(index) == NULL)
 		return create_index_error(-1,
 			"could not initialize index entry. "
 			"Index is not backed up by an existing repository.");
 
-	if (index_entry_create(&entry, INDEX_OWNER(index), rel_path, true) < 0)
+	/*
+	 * FIXME: this is duplicated with the work in
+	 * git_blob__create_from_paths. It should accept an optional stat
+	 * structure so we can pass in the one we have to do here.
+	 */
+	repo = INDEX_OWNER(index);
+	if (git_repository__ensure_not_bare(repo, "create blob from file") < 0)
+		return GIT_EBAREREPO;
+
+	if (git_buf_joinpath(&path, git_repository_workdir(repo), rel_path) < 0)
+		return -1;
+
+	error = git_path_lstat(path.ptr, &st);
+	git_buf_free(&path);
+
+	if (error < 0)
+		return error;
+
+	if (index_entry_create(&entry, INDEX_OWNER(index), rel_path, &st, true) < 0)
 		return -1;
 
 	/* write the blob to disk and get the oid and stat info */
@@ -1016,7 +1040,7 @@ static int index_entry_dup(
 	git_index *index,
 	const git_index_entry *src)
 {
-	if (index_entry_create(out, INDEX_OWNER(index), src->path, false) < 0)
+	if (index_entry_create(out, INDEX_OWNER(index), src->path, NULL, false) < 0)
 		return -1;
 
 	index_entry_cpy(*out, src);
@@ -1038,7 +1062,7 @@ static int index_entry_dup_nocache(
 	git_index *index,
 	const git_index_entry *src)
 {
-	if (index_entry_create(out, INDEX_OWNER(index), src->path, false) < 0)
+	if (index_entry_create(out, INDEX_OWNER(index), src->path, NULL, false) < 0)
 		return -1;
 
 	index_entry_cpy_nocache(*out, src);
@@ -1461,9 +1485,6 @@ static int add_repo_as_submodule(git_index_entry **out, git_index *index, const 
 	struct stat st;
 	int error;
 
-	if (index_entry_create(&entry, INDEX_OWNER(index), path, true) < 0)
-		return -1;
-
 	if ((error = git_buf_joinpath(&abspath, git_repository_workdir(repo), path)) < 0)
 		return error;
 
@@ -1471,6 +1492,9 @@ static int add_repo_as_submodule(git_index_entry **out, git_index *index, const 
 		giterr_set(GITERR_OS, "failed to stat repository dir");
 		return -1;
 	}
+
+	if (index_entry_create(&entry, INDEX_OWNER(index), path, &st, true) < 0)
+		return -1;
 
 	git_index_entry__init_from_stat(entry, &st, !index->distrust_filemode);
 
@@ -2605,7 +2629,7 @@ static bool is_index_extended(git_index *index)
 static int write_disk_entry(git_filebuf *file, git_index_entry *entry, const char *last)
 {
 	void *mem = NULL;
-	struct entry_short *ondisk;
+	struct entry_short ondisk;
 	size_t path_len, disk_size;
 	int varint_len = 0;
 	char *path;
@@ -2633,9 +2657,7 @@ static int write_disk_entry(git_filebuf *file, git_index_entry *entry, const cha
 	if (git_filebuf_reserve(file, &mem, disk_size) < 0)
 		return -1;
 
-	ondisk = (struct entry_short *)mem;
-
-	memset(ondisk, 0x0, disk_size);
+	memset(mem, 0x0, disk_size);
 
 	/**
 	 * Yes, we have to truncate.
@@ -2647,30 +2669,32 @@ static int write_disk_entry(git_filebuf *file, git_index_entry *entry, const cha
 	 *
 	 * In 2038 I will be either too dead or too rich to care about this
 	 */
-	ondisk->ctime.seconds = htonl((uint32_t)entry->ctime.seconds);
-	ondisk->mtime.seconds = htonl((uint32_t)entry->mtime.seconds);
-	ondisk->ctime.nanoseconds = htonl(entry->ctime.nanoseconds);
-	ondisk->mtime.nanoseconds = htonl(entry->mtime.nanoseconds);
-	ondisk->dev = htonl(entry->dev);
-	ondisk->ino = htonl(entry->ino);
-	ondisk->mode = htonl(entry->mode);
-	ondisk->uid = htonl(entry->uid);
-	ondisk->gid = htonl(entry->gid);
-	ondisk->file_size = htonl((uint32_t)entry->file_size);
+	ondisk.ctime.seconds = htonl((uint32_t)entry->ctime.seconds);
+	ondisk.mtime.seconds = htonl((uint32_t)entry->mtime.seconds);
+	ondisk.ctime.nanoseconds = htonl(entry->ctime.nanoseconds);
+	ondisk.mtime.nanoseconds = htonl(entry->mtime.nanoseconds);
+	ondisk.dev = htonl(entry->dev);
+	ondisk.ino = htonl(entry->ino);
+	ondisk.mode = htonl(entry->mode);
+	ondisk.uid = htonl(entry->uid);
+	ondisk.gid = htonl(entry->gid);
+	ondisk.file_size = htonl((uint32_t)entry->file_size);
 
-	git_oid_cpy(&ondisk->oid, &entry->id);
+	git_oid_cpy(&ondisk.oid, &entry->id);
 
-	ondisk->flags = htons(entry->flags);
+	ondisk.flags = htons(entry->flags);
 
 	if (entry->flags & GIT_IDXENTRY_EXTENDED) {
-		struct entry_long *ondisk_ext;
-		ondisk_ext = (struct entry_long *)ondisk;
-		ondisk_ext->flags_extended = htons(entry->flags_extended &
+		struct entry_long ondisk_ext;
+		memcpy(&ondisk_ext, &ondisk, sizeof(struct entry_short));
+		ondisk_ext.flags_extended = htons(entry->flags_extended &
 			GIT_IDXENTRY_EXTENDED_FLAGS);
-		path = ondisk_ext->path;
+		memcpy(mem, &ondisk_ext, offsetof(struct entry_long, path));
+		path = ((struct entry_long*)mem)->path;
 		disk_size -= offsetof(struct entry_long, path);
 	} else {
-		path = ondisk->path;
+		memcpy(mem, &ondisk, offsetof(struct entry_short, path));
+		path = ((struct entry_short*)mem)->path;
 		disk_size -= offsetof(struct entry_short, path);
 	}
 
@@ -2965,7 +2989,7 @@ static int read_tree_cb(
 	if (git_buf_joinpath(&path, root, tentry->filename) < 0)
 		return -1;
 
-	if (index_entry_create(&entry, INDEX_OWNER(data->index), path.ptr, false) < 0)
+	if (index_entry_create(&entry, INDEX_OWNER(data->index), path.ptr, NULL, false) < 0)
 		return -1;
 
 	entry->mode = tentry->attr;
