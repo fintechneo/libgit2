@@ -4,7 +4,9 @@
  * Author: Peter Johan Salomonsen ( https://github.com/petersalomonsen ) 
  */
 
-#include "emscripten.h"
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+
 #include <stdio.h>
 #include "streams/stransport.h"
 #include "streams/tls.h"
@@ -834,3 +836,5 @@ void jsgitpush() {
 	printf("Push done\n");
 
 }
+
+#endif

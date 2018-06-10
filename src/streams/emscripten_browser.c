@@ -10,7 +10,9 @@
  * 
  * Author: Peter Johan Salomonsen ( https://github.com/petersalomonsen ) 
  */
-#include "emscripten.h"
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+
 #include "streams/stransport.h"
 
 git_stream xhrstream;
@@ -152,3 +154,4 @@ int git_open_emscripten_stream(git_stream **out, const char *host, const char *p
 	return 0;
 }
 
+#endif
