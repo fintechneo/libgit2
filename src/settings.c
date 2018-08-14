@@ -23,6 +23,7 @@
 #include "object.h"
 #include "odb.h"
 #include "refs.h"
+#include "index.h"
 #include "transports/smart.h"
 #include "streams/openssl.h"
 #include "streams/mbedtls.h"
@@ -55,6 +56,7 @@ int git_libgit2_features(void)
 /* Declarations for tuneable settings */
 extern size_t git_mwindow__window_size;
 extern size_t git_mwindow__mapped_limit;
+extern size_t git_indexer__max_objects;
 
 static int config_level_to_sysdir(int config_level)
 {
@@ -265,6 +267,18 @@ int git_libgit2_opts(int key, ...)
 		error = git_allocator_setup(va_arg(ap, git_allocator *));
 		break;
 
+	case GIT_OPT_ENABLE_UNSAVED_INDEX_SAFETY:
+		git_index__enforce_unsaved_safety = (va_arg(ap, int) != 0);
+		break;
+
+	case GIT_OPT_SET_PACK_MAX_OBJECTS:
+		git_indexer__max_objects = va_arg(ap, size_t);
+		break;
+
+	case GIT_OPT_GET_PACK_MAX_OBJECTS:
+		*(va_arg(ap, size_t *)) = git_indexer__max_objects;
+		break;
+
 	default:
 		giterr_set(GITERR_INVALID, "invalid option key");
 		error = -1;
@@ -274,4 +288,3 @@ int git_libgit2_opts(int key, ...)
 
 	return error;
 }
-

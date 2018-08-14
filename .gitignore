@@ -40,3 +40,5 @@ emscripten_hacks/Makefile
 emscripten_hacks/node_modules
 
 .vscode
+*.profdata
+*.profraw

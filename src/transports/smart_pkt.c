@@ -86,19 +86,6 @@ static int nak_pkt(git_pkt **out)
 	return 0;
 }
 
-static int pack_pkt(git_pkt **out)
-{
-	git_pkt *pkt;
-
-	pkt = git__malloc(sizeof(git_pkt));
-	GITERR_CHECK_ALLOC(pkt);
-
-	pkt->type = GIT_PKT_PACK;
-	*out = pkt;
-
-	return 0;
-}
-
 static int comment_pkt(git_pkt **out, const char *line, size_t len)
 {
 	git_pkt_comment *pkt;
@@ -216,6 +203,11 @@ static int ref_pkt(git_pkt **out, const char *line, size_t len)
 	git_pkt_ref *pkt;
 	size_t alloclen;
 
+	if (len < GIT_OID_HEXSZ + 1) {
+		giterr_set(GITERR_NET, "error parsing pkt-line");
+		return -1;
+	}
+
 	pkt = git__malloc(sizeof(git_pkt_ref));
 	GITERR_CHECK_ALLOC(pkt);
 
@@ -299,8 +291,11 @@ static int ng_pkt(git_pkt **out, const char *line, size_t len)
 	pkt->ref = NULL;
 	pkt->type = GIT_PKT_NG;
 
+	if (len < 3)
+		goto out_err;
 	line += 3; /* skip "ng " */
-	if (!(ptr = strchr(line, ' ')))
+	len -= 3;
+	if (!(ptr = memchr(line, ' ', len)))
 		goto out_err;
 	len = ptr - line;
 
@@ -311,8 +306,11 @@ static int ng_pkt(git_pkt **out, const char *line, size_t len)
 	memcpy(pkt->ref, line, len);
 	pkt->ref[len] = '\0';
 
+	if (len < 1)
+		goto out_err;
 	line = ptr + 1;
-	if (!(ptr = strchr(line, '\n')))
+	len -= 1;
+	if (!(ptr = memchr(line, '\n', len)))
 		goto out_err;
 	len = ptr - line;
 
@@ -370,7 +368,7 @@ static int32_t parse_len(const char *line)
 					num[k] = '.';
 				}
 			}
-			
+
 			giterr_set(GITERR_NET, "invalid hex digit in length: '%s'", num);
 			return -1;
 		}
@@ -412,12 +410,12 @@ int git_pkt_parse_line(
 		 * server is trying to send us the packfile already.
 		 */
 		if (bufflen >= 4 && !git__prefixcmp(line, "PACK")) {
-			giterr_clear();
-			*out = line;
-			return pack_pkt(head);
+			giterr_set(GITERR_NET, "unexpected pack file");
+		} else {
+			giterr_set(GITERR_NET, "bad packet length");
 		}
 
-		return (int)len;
+		return -1;
 	}
 
 	/*
@@ -483,6 +481,9 @@ int git_pkt_parse_line(
 
 void git_pkt_free(git_pkt *pkt)
 {
+	if (pkt == NULL) {
+		return;
+	}
 	if (pkt->type == GIT_PKT_REF) {
 		git_pkt_ref *p = (git_pkt_ref *) pkt;
 		git__free(p->head.name);

@@ -194,7 +194,10 @@ typedef enum {
 	GIT_OPT_GET_WINDOWS_SHAREMODE,
 	GIT_OPT_SET_WINDOWS_SHAREMODE,
 	GIT_OPT_ENABLE_STRICT_HASH_VERIFICATION,
-	GIT_OPT_SET_ALLOCATOR
+	GIT_OPT_SET_ALLOCATOR,
+	GIT_OPT_ENABLE_UNSAVED_INDEX_SAFETY,
+	GIT_OPT_GET_PACK_MAX_OBJECTS,
+	GIT_OPT_SET_PACK_MAX_OBJECTS
 } git_libgit2_opt_t;
 
 /**
@@ -362,6 +365,26 @@ typedef enum {
  *		> Set the memory allocator to a different memory allocator. This
  *		> allocator will then be used to make all memory allocations for
  *		> libgit2 operations.
+ *
+ *	 opts(GIT_OPT_ENABLE_UNSAVED_INDEX_SAFETY, int enabled)
+ *
+ *		> Ensure that there are no unsaved changes in the index before
+ *		> beginning any operation that reloads the index from disk (eg,
+ *		> checkout).  If there are unsaved changes, the instruction will
+ *		> fail.  (Using the FORCE flag to checkout will still overwrite
+ *		> these changes.)
+ *
+ *	 opts(GIT_OPT_GET_PACK_MAX_OBJECTS, size_t *out)
+ *
+ *		> Get the maximum number of objects libgit2 will allow in a pack
+ *		> file when downloading a pack file from a remote. This can be
+ *		> used to limit maximum memory usage when fetching from an untrusted
+ *		> remote.
+ *
+ *	 opts(GIT_OPT_SET_PACK_MAX_OBJECTS, size_t objects)
+ *
+ *		> Set the maximum number of objects libgit2 will allow in a pack
+ *		> file when downloading a pack file from a remote.
  *
  * @param option Option key
  * @param ... value to set the option
