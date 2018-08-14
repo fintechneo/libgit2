@@ -14,8 +14,6 @@ Then go into the jsbuild folder and run the build shell script:
 
 You should end up with a libgit2.js file in your jsbuild folder.
 
-In your webserver you should map the jsbuild folder to e.g. https://yourhost/libgit2 so that when you navigate to this URL you'll get the index.html page in that jsbuild folder.
-
 Because of CORS restrictions in the browser you cannot read from github directly from another domain. You need to add a proxy on your web server. You can run the githttpproxy.js script in this folder to 
 get a local webserver with proxy to github.com:
 
