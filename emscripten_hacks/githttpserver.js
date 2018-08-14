@@ -1,3 +1,7 @@
+/**
+ * This example will create a git http server to a repository on your local disk.
+ * Modify GIT_PROJECT_ROOT below to change the loction of your git repositories.
+ */
 
 const http = require('http');
 const path = require('path');

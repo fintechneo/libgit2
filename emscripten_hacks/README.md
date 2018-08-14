@@ -16,17 +16,19 @@ You should end up with a libgit2.js file in your jsbuild folder.
 
 In your webserver you should map the jsbuild folder to e.g. https://yourhost/libgit2 so that when you navigate to this URL you'll get the index.html page in that jsbuild folder.
 
-Because of CORS restrictions in the browser you cannot read from github directly from another domain. You need to add a proxy on your web server. E.g. for Apache you'd use a ProxyPass directive like this:
+Because of CORS restrictions in the browser you cannot read from github directly from another domain. You need to add a proxy on your web server. You can run the githttpproxy.js script in this folder to 
+get a local webserver with proxy to github.com:
 
-    ProxyPass /pathto/mygitrepo.git/ https://github.com/pathto/mygitrepo.git/
-    ProxyPassReverse /pathto/mygitrepo.git/ https://github.com/pathto/mygitrepo.git/
+    node githttpproxy.js
+
+Navigate your browser to `http://localhost:5000`
 
 When testing with the index.html file included here you should open the web console which will prompt "ready" when loaded. Remember to switch to the libgit2 webworker for typing commands in the console.
 
 Type the commands:
 
-    window.jsgitinit();
-    window.jsgitclone("https://github.com/pathto/mygitrepo.git","mygitrepo");
+    jsgitinit();
+    jsgitclone("https://github.com/pathto/mygitrepo.git","mygitrepo");
 
 You'll see the git clone process starts. This is not a small repository so it takes some time.
 
