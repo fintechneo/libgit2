@@ -172,5 +172,8 @@ lg.onRuntimeInitialized = () => {
     jsgitpull();
     console.log('Merge with both changing the same file:')
     console.log(FS.readFile('test2.txt', {encoding: 'utf8'}));
+
+    jsgithistory();
+    console.log(jsgithistoryresult);
 };
 

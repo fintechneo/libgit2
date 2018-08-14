@@ -14,3 +14,4 @@ jsgitpull = cwrap('jsgitpull', null, []);
 jsgitshutdown = cwrap('jsgitshutdown', null, []);
 jsgitprintlatestcommit = cwrap('jsgitprintlatestcommit', null, []);
 jsgitcommit = cwrap('jsgitcommit', null, ['string']);
+jsgithistory = cwrap('jsgithistory', null, []);

@@ -15,5 +15,6 @@
     "_jsgitworkdirnumberofdeltas",
     "_jsgitaddfileswithchanges",
     "_jsgitrepositorystate",
-    "_jsgitstatus"
+    "_jsgitstatus",
+    "_jsgithistory"
 ]

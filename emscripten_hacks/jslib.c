@@ -292,6 +292,77 @@ void jsgitprintlatestcommit()
 }
 
 
+void jsgithistoryvisitcommit(git_commit *c)
+{
+	size_t i, num_parents = git_commit_parentcount(c);
+
+	char oidstr[GIT_OID_HEXSZ + 1];
+	
+	git_oid_tostr(oidstr, sizeof(oidstr), git_commit_id(c));
+
+	const git_signature * author = git_commit_author(c);
+	const char * message = git_commit_message(c);
+	
+	EM_ASM_({
+				var commitentry = ({
+					id: Pointer_stringify($0),
+					when: $4,
+					name: Pointer_stringify($1),
+					email: Pointer_stringify($2),
+					message: Pointer_stringify($3),
+					parents: []
+				});
+
+				jsgithistoryresultbyid[commitentry.id] = commitentry;
+				jsgithistoryresult.push(commitentry);
+			},
+			oidstr,			
+			author->name,
+			author->email,
+			message,
+			author->when.time
+	);
+	
+	for (i=0; i<num_parents; i++) {		
+		git_commit *p;
+		if (!git_commit_parent(&p, c, i)) {
+			
+			char parent_oidstr[GIT_OID_HEXSZ + 1];
+			git_oid_tostr(parent_oidstr, sizeof(parent_oidstr), git_commit_id(p));
+			
+			EM_ASM_({
+				var commitid = Pointer_stringify($0);
+				jsgithistoryresultbyid[commitid].parents.push(Pointer_stringify($1));
+			}, oidstr, parent_oidstr);
+			
+			jsgithistoryvisitcommit(p);
+		}
+		git_commit_free(p);
+	}
+}
+
+void jsgithistory() {
+  	git_commit *commit;
+	git_oid oid_parent_commit;
+	
+	EM_ASM(
+		jsgithistoryresult = [];
+		jsgithistoryresultbyid = {};
+	);
+
+	int rc = git_reference_name_to_id( &oid_parent_commit, repo, "HEAD" );
+
+	if ( rc == 0 )
+	{
+		rc = git_commit_lookup( &commit, repo, &oid_parent_commit );
+		if ( rc == 0 )
+		{
+  			jsgithistoryvisitcommit(commit);			
+			git_commit_free(commit);      
+		}
+	}	  	
+}
+
 void jsgitshutdown() {
 	git_repository_free(repo);
 	git_libgit2_shutdown();
