@@ -303,7 +303,7 @@ void jsgithistoryvisitcommit(git_commit *c)
 	const git_signature * author = git_commit_author(c);
 	const char * message = git_commit_message(c);
 	
-	EM_ASM_({
+	int alreadyvisited = EM_ASM_INT({
 				var commitentry = ({
 					id: Pointer_stringify($0),
 					when: $4,
@@ -313,31 +313,38 @@ void jsgithistoryvisitcommit(git_commit *c)
 					parents: []
 				});
 
-				jsgithistoryresultbyid[commitentry.id] = commitentry;
-				jsgithistoryresult.push(commitentry);
+				if(jsgithistoryresultbyid[commitentry.id]) {
+					return 1;
+				} else {
+					jsgithistoryresultbyid[commitentry.id] = commitentry;
+					jsgithistoryresult.push(commitentry);
+					return 0;
+				}
 			},
 			oidstr,			
 			author->name,
 			author->email,
 			message,
-			author->when.time
+			(uint32_t)author->when.time
 	);
 	
-	for (i=0; i<num_parents; i++) {		
-		git_commit *p;
-		if (!git_commit_parent(&p, c, i)) {
-			
-			char parent_oidstr[GIT_OID_HEXSZ + 1];
-			git_oid_tostr(parent_oidstr, sizeof(parent_oidstr), git_commit_id(p));
-			
-			EM_ASM_({
-				var commitid = Pointer_stringify($0);
-				jsgithistoryresultbyid[commitid].parents.push(Pointer_stringify($1));
-			}, oidstr, parent_oidstr);
-			
-			jsgithistoryvisitcommit(p);
+	if(alreadyvisited == 0) {
+		for (i=0; i<num_parents; i++) {		
+			git_commit *p;
+			if (!git_commit_parent(&p, c, i)) {
+				
+				char parent_oidstr[GIT_OID_HEXSZ + 1];
+				git_oid_tostr(parent_oidstr, sizeof(parent_oidstr), git_commit_id(p));
+				
+				EM_ASM_({
+					var commitid = Pointer_stringify($0);
+					jsgithistoryresultbyid[commitid].parents.push(Pointer_stringify($1));
+				}, oidstr, parent_oidstr);
+				
+				jsgithistoryvisitcommit(p);
+			}
+			git_commit_free(p);
 		}
-		git_commit_free(p);
 	}
 }
 
