@@ -853,20 +853,31 @@ int jsgitstatus() {
 		git_index_conflict_iterator_new(&conflicts, index);
 
 		while ((err = git_index_conflict_next(&ancestor, &our, &their, conflicts)) == 0) {
-			fprintf(stderr, "conflict: a:%s o:%s t:%s\n",
+			git_blob *our_blob;
+			git_blob_lookup(&our_blob, repo, &our->id);
+
+			git_blob *their_blob;
+			git_blob_lookup(&their_blob, repo, &their->id);
+			
+			int is_binary = git_blob_is_binary(our_blob) | git_blob_is_binary(their_blob);
+
+			fprintf(stderr, "conflict: a:%s o:%s t:%s, binary:%d\n",
 					ancestor ? ancestor->path : "NULL",
 					our->path ? our->path : "NULL",
-					their->path ? their->path : "NULL");
+					their->path ? their->path : "NULL", is_binary);
+			
 			EM_ASM_({
 				jsgitstatusresult.push({
 						ancestor: Pointer_stringify($0),
-						our: Pointer_stringify($0),
-						their: Pointer_stringify($0),
-						status: 'conflict'
+						our: Pointer_stringify($1),
+						their: Pointer_stringify($2),
+						status: 'conflict',
+						binary: $3
 					});
 				}, ancestor ? ancestor->path : "NULL",
 						our->path ? our->path : "NULL",
-						their->path ? their->path : "NULL"
+						their->path ? their->path : "NULL",
+						is_binary
 			);
 		}
 

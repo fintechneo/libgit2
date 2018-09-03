@@ -34,6 +34,9 @@ lg.onRuntimeInitialized = () => {
     // Create second commit
     FS.writeFile('test.txt', 'line1\nline2 modify 1\n\line3');
     jsgitadd('test.txt');
+
+    FS.writeFile('test.bin', Uint8Array.from([1,0,0,2,3,0,2,3,5]) , {encoding: 'binary'});
+    jsgitadd('test.bin');
     jsgitcommit(
         'Revision 2'
     );
@@ -50,6 +53,10 @@ lg.onRuntimeInitialized = () => {
     jsgitsetuser('Test user','test@example.com');
     FS.writeFile('test.txt', 'line1\nline2 modify 2 pick me\n\line3');
     jsgitadd('test.txt');
+
+    FS.writeFile('test.bin', Uint8Array.from([1,0,233,2,5,0,2,3,5]) , {encoding: 'binary'});
+    jsgitadd('test.bin');
+    
     jsgitcommit(
         'This will be a conflict'
     );
@@ -99,6 +106,14 @@ lg.onRuntimeInitialized = () => {
     
     jsgitadd('test.txt');
     
+    const binaryconflict = jsgitstatusresult.find(d => d.status==='conflict' && d.binary);
+    console.log('Found binary conflict',binaryconflict);
+    if(binaryconflict.our !== 'test.bin' || binaryconflict.their !== 'test.bin') {
+        throw 'Binary conflict not as expected';
+    }
+    console.log('pick local version of binary file');
+    jsgitadd('test.bin');
+
     jsgitresolvemergecommit();
     jsgitprintlatestcommit();
 
