@@ -182,7 +182,7 @@ void printLastError() {
 	if (err) printf("ERROR %d: %s\n", err->klass, err->message);	
 }
 
-void jsgitinit() {
+void EMSCRIPTEN_KEEPALIVE jsgitinit() {
 	git_stream_register_tls(git_open_emscripten_stream);
 	git_libgit2_init();	
 	printf("libgit2 for javascript initialized\n");
@@ -191,22 +191,22 @@ void jsgitinit() {
 /**
  * Initialize repository in current directory
  */
-void jsgitinitrepo(unsigned int bare) {
+void EMSCRIPTEN_KEEPALIVE jsgitinitrepo(unsigned int bare) {
 	git_repository_init(&repo, ".", bare);
 }
 
 /**
  * Open repository in current directory
  */
-void jsgitopenrepo() {
+void EMSCRIPTEN_KEEPALIVE jsgitopenrepo() {
 	git_repository_open(&repo, ".");
 }
 
-void jsgitclone(char * url, char * localdir) {			
+void EMSCRIPTEN_KEEPALIVE jsgitclone(char * url, char * localdir) {			
 	cloneremote(url,localdir);		
 }
 
-void jsgitadd(const char * path) {	
+void EMSCRIPTEN_KEEPALIVE jsgitadd(const char * path) {	
 	git_index *index;	
 	git_repository_index(&index, repo);	
 	git_index_add_bypath(index, path);
@@ -214,7 +214,7 @@ void jsgitadd(const char * path) {
 	git_index_free(index);
 }
 
-void jsgitremove(const char * path) {	
+void EMSCRIPTEN_KEEPALIVE jsgitremove(const char * path) {	
 	git_index *index;	
 	git_repository_index(&index, repo);	
 	git_index_remove_bypath(index, path);
@@ -222,7 +222,7 @@ void jsgitremove(const char * path) {
 	git_index_free(index);
 }
 
-void jsgitcommit(char * comment) {
+void EMSCRIPTEN_KEEPALIVE jsgitcommit(char * comment) {
 	git_oid commit_oid,tree_oid,oid_parent_commit;
 	git_commit *parent_commit;
 	git_tree *tree;
@@ -271,7 +271,7 @@ int jsgitrepositorystate() {
 	return git_repository_state(repo);
 }
 
-void jsgitprintlatestcommit()
+void EMSCRIPTEN_KEEPALIVE jsgitprintlatestcommit()
 {
 	int rc;
 	git_commit * commit = NULL; /* the result */
@@ -348,7 +348,7 @@ void jsgithistoryvisitcommit(git_commit *c)
 	}
 }
 
-void jsgithistory() {
+void EMSCRIPTEN_KEEPALIVE jsgithistory() {
   	git_commit *commit;
 	git_oid oid_parent_commit;
 	
@@ -370,7 +370,7 @@ void jsgithistory() {
 	}	  	
 }
 
-void jsgitshutdown() {
+void EMSCRIPTEN_KEEPALIVE jsgitshutdown() {
 	git_repository_free(repo);
 	git_libgit2_shutdown();
 }
@@ -514,7 +514,7 @@ int fetchead_foreach_cb(const char *ref_name,
 	return 0;
 }	
 
-void jsgitsetuser(const char *name, const char *email) {
+void EMSCRIPTEN_KEEPALIVE jsgitsetuser(const char *name, const char *email) {
 	git_config *config;
 	
 	git_repository_config(&config, repo);
@@ -523,7 +523,7 @@ void jsgitsetuser(const char *name, const char *email) {
 	git_config_free(config);
 }
 
-void jsgitresolvemergecommit() {	
+void EMSCRIPTEN_KEEPALIVE jsgitresolvemergecommit() {	
 	git_index *index;
 	git_repository_index(&index, repo);	
 	
@@ -567,7 +567,7 @@ void jsgitresolvemergecommit() {
 	git_commit_free(fetchhead_commit);			
 }
 
-void jsgitpull() {
+void EMSCRIPTEN_KEEPALIVE jsgitpull() {
 	git_remote *remote = NULL;
 	const git_transfer_progress *stats;
 	git_fetch_options fetch_opts = GIT_FETCH_OPTIONS_INIT;
@@ -627,7 +627,7 @@ int diff_file_cb(const git_diff_delta *delta, float progress, void *payload) {
 	return 0;
 }
 
-void jsgitaddfileswithchanges() {
+void EMSCRIPTEN_KEEPALIVE jsgitaddfileswithchanges() {
 	git_diff *diff;
 	
 	git_diff_index_to_workdir(&diff, repo, NULL, NULL);
@@ -636,7 +636,7 @@ void jsgitaddfileswithchanges() {
 	git_diff_free(diff);
 }
 
-int jsgitworkdirnumberofdeltas() {
+int EMSCRIPTEN_KEEPALIVE jsgitworkdirnumberofdeltas() {
 	git_diff *diff;
 	
 	git_diff_index_to_workdir(&diff, repo, NULL, NULL);
@@ -645,7 +645,7 @@ int jsgitworkdirnumberofdeltas() {
 	return ret;
 }
 
-int jsgitstatus() {
+int EMSCRIPTEN_KEEPALIVE jsgitstatus() {
 	git_status_list *status;
 	git_status_options statusopt = GIT_STATUS_OPTIONS_INIT;
 	EM_ASM(
@@ -897,7 +897,7 @@ int jsgitstatus() {
 	}
 }
 
-void jsgitpush() {
+void EMSCRIPTEN_KEEPALIVE jsgitpush() {
 	// get the remote.
 	int error;
 
