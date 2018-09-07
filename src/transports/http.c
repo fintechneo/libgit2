@@ -525,7 +525,7 @@ static void clear_parser_state(http_subtransport *t)
 
 static int write_chunk(git_stream *io, const char *buffer, size_t len)
 {	
-	#ifndef APPLY_EMSCRIPTEN_HACKS
+	#ifndef __EMSCRIPTEN__
 	git_buf buf = GIT_BUF_INIT;
 	
 	/* Chunk header */
@@ -547,7 +547,7 @@ static int write_chunk(git_stream *io, const char *buffer, size_t len)
 	if (len > 0 && git_stream_write(io, buffer, len, 0) < 0)
 		return -1;
 
-	#ifndef APPLY_EMSCRIPTEN_HACKS
+	#ifndef __EMSCRIPTEN__
 		
 	/* Chunk footer */
 	if (git_stream_write(io, "\r\n", 2, 0) < 0)
@@ -710,12 +710,12 @@ replay:
 		s->received_response = 1;
 	}
 			
-	#ifdef APPLY_EMSCRIPTEN_HACKS
+	#ifdef __EMSCRIPTEN__
 	// When using emscripten we simply bypass the http parser since we use the one built into the browser
 	*(bytes_read)  = git_stream_read(t->io, buffer, buf_size);	
 	#endif
 
-	#ifndef APPLY_EMSCRIPTEN_HACKS
+	#ifndef __EMSCRIPTEN__
 	while (!*bytes_read && !t->parse_finished) {
 		size_t data_offset;
 		int error;

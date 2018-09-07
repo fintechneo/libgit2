@@ -83,7 +83,7 @@ static int parse_header(struct git_pack_header *hdr, struct git_pack_file *pack)
 
 	memcpy(hdr, map.data, sizeof(*hdr));
 	
-	#ifdef APPLY_EMSCRIPTEN_HACKS
+	#ifdef __EMSCRIPTEN__
 	// Emscripten mmap is read only, so have to help a little and add a manual write here
 	pwrite( pack->mwf.fd,hdr,sizeof(*hdr),0);	
 	#endif
@@ -496,7 +496,7 @@ static int write_at(git_indexer *idx, const void *data, git_off_t offset, size_t
 	map_data = (unsigned char *)map.data;
 	memcpy(map_data + page_offset, data, size);
 	
-	#ifdef APPLY_EMSCRIPTEN_HACKS
+	#ifdef __EMSCRIPTEN__
 	// Emscripten mmap is read only, so have to help a little and add a manual write here
 	pwrite(fd,data,size,page_start+page_offset);
 	#endif
@@ -1102,7 +1102,7 @@ int git_indexer_commit(git_indexer *idx, git_transfer_progress *stats)
 
 	git_mwindow_free_all(&idx->pack->mwf);
 
-	#ifdef APPLY_EMSCRIPTEN_HACKS
+	#ifdef __EMSCRIPTEN__
 	// In Emscripten file system this file is read only, so have to give it write permission here
 	fchmod(idx->pack->mwf.fd,0777);
 	#endif	
