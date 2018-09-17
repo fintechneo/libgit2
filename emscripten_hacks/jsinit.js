@@ -15,3 +15,4 @@ jsgitshutdown = cwrap('jsgitshutdown', null, []);
 jsgitprintlatestcommit = cwrap('jsgitprintlatestcommit', null, []);
 jsgitcommit = cwrap('jsgitcommit', null, ['string']);
 jsgithistory = cwrap('jsgithistory', null, []);
+jsgitregisterfilter = cwrap('jsgitregisterfilter', null, ['string', 'string', 'number']);

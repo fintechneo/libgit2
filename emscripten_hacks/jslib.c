@@ -15,6 +15,8 @@
 #include "git2.h"
 #include "git2/clone.h"
 #include "git2/merge.h"
+#include "filter.h"
+#include "git2/sys/filter.h"
 
 static git_repository *repo = NULL;
 
@@ -924,6 +926,60 @@ void EMSCRIPTEN_KEEPALIVE jsgitpush() {
 	}
 	printf("Push done\n");
 
+}
+
+void jsfilter_free(git_filter *f)
+{
+	git__free(f);
+}
+
+int jsfilter_apply(
+	git_filter     *self,
+	void          **payload,
+	git_buf        *to,
+	const git_buf  *from,
+	const git_filter_source *source)
+{
+	const unsigned char *src = (const unsigned char *)from->ptr;
+
+	int filterresultsize = EM_ASM_INT({
+		const buf = new Uint8Array(Module.HEAPU8.buffer,$3,$4);
+		jsgitfilterresult = jsgitfilterfunctions[Pointer_stringify($1)](
+			Pointer_stringify($0),
+			Pointer_stringify($1),
+			$2,
+			buf
+		);
+		
+		return jsgitfilterresult.length;		
+	}, git_filter_source_path(source), 
+		self->attributes, 
+		git_filter_source_mode(source), 
+		src, from->size);
+	
+	unsigned char *dst;	
+	
+	git_buf_grow(to, filterresultsize);
+
+	dst = (unsigned char *)to->ptr;
+	to->size = filterresultsize;
+
+	EM_ASM_({
+		writeArrayToMemory(jsgitfilterresult, $0);		
+	}, dst);
+
+	return 0;
+}
+
+void EMSCRIPTEN_KEEPALIVE jsgitregisterfilter(char * name, char * attributes, int priority) {
+	git_filter *filter = git__calloc(1, sizeof(git_filter));
+	
+	filter->version = GIT_FILTER_VERSION;
+	filter->attributes = attributes;
+	filter->shutdown = jsfilter_free; 
+	filter->apply = jsfilter_apply;
+	
+	git_filter_register(name, filter, priority);
 }
 
 #endif
