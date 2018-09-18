@@ -944,13 +944,25 @@ int jsfilter_apply(
 
 	int filterresultsize = EM_ASM_INT({
 		const buf = new Uint8Array(Module.HEAPU8.buffer,$3,$4);
-		jsgitfilterresult = jsgitfilterfunctions[Pointer_stringify($1)](
-			Pointer_stringify($0),
-			Pointer_stringify($1),
-			$2,
-			buf
-		);
-		
+		const filterfunctionkey = Pointer_stringify($1);
+
+		if(jsgitfilterfunctions[filterfunctionkey]) {
+			jsgitfilterresult = jsgitfilterfunctions[filterfunctionkey](
+				Pointer_stringify($0),
+				Pointer_stringify($1),
+				$2,
+				buf
+			);
+		} else {
+			/* console.log('Could not find filter',
+				filterfunctionkey, 'for path',
+				Pointer_stringify($0),
+				'attrs',
+				Pointer_stringify($1),
+				'mode', $2); */
+			jsgitfilterresult = buf;
+		}
+
 		return jsgitfilterresult.length;		
 	}, git_filter_source_path(source), 
 		self->attributes, 
