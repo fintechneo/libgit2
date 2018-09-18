@@ -28,6 +28,7 @@ INCLUDE(CheckLibraryExists)
 INCLUDE(CheckFunctionExists)
 INCLUDE(CheckSymbolExists)
 INCLUDE(CheckStructHasMember)
+INCLUDE(CheckPrototypeDefinition) # Added in CMake 3.0
 INCLUDE(AddCFlagIfSupported)
 INCLUDE(FindPkgLibraries)
 INCLUDE(FindThreads)
@@ -61,6 +62,8 @@ OPTION(USE_EXT_HTTP_PARSER		"Use system HTTP_Parser if available"			 ON)
 OPTION(DEBUG_POOL			"Enable debug pool allocator"				OFF)
 OPTION(ENABLE_WERROR			"Enable compilation with -Werror"			OFF)
 OPTION(USE_BUNDLED_ZLIB    		"Use the bundled version of zlib"			OFF)
+   SET(CLAR_XML 			"OFF"					       CACHE STRING
+       "Writes test results in XML format.  One of ON, OFF or the directory to write to; this does not affect the output executables, this only affects the behavior of the ctest command.")
 
 IF (UNIX AND NOT APPLE)
 	OPTION(ENABLE_REPRODUCIBLE_BUILDS "Enable reproducible builds"				OFF)
