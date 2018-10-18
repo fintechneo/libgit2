@@ -14,11 +14,14 @@
 PROJECT(libgit2 C)
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8.11)
 CMAKE_POLICY(SET CMP0015 NEW)
-IF (POLICY CMP0051)
+IF(POLICY CMP0051)
 	CMAKE_POLICY(SET CMP0051 NEW)
 ENDIF()
-IF (POLICY CMP0042)
+IF(POLICY CMP0042)
 	CMAKE_POLICY(SET CMP0042 NEW)
+ENDIF()
+IF(POLICY CMP0054)
+	CMAKE_POLICY(SET CMP0054 NEW)
 ENDIF()
 
 # Add find modules to the path
@@ -52,7 +55,7 @@ OPTION(LIBGIT2_FILENAME			"Name of the produced binary"				OFF)
 
    SET(SHA1_BACKEND 			"CollisionDetection"			       CACHE STRING
        "Backend to use for SHA1. One of Generic, OpenSSL, Win32, CommonCrypto, mbedTLS, CollisionDetection.")
-OPTION(USE_SSH				"Link with libssh to enable SSH support"		 ON)
+OPTION(USE_SSH				"Link with libssh2 to enable SSH support"		 ON)
 OPTION(USE_HTTPS			"Enable HTTPS support. Can be set to a specific backend" ON)
 OPTION(USE_GSSAPI			"Link with libgssapi for SPNEGO auth"			OFF)
 OPTION(USE_STANDALONE_FUZZERS		"Enable standalone fuzzers (compatible with gcc)"	OFF)
@@ -62,8 +65,6 @@ OPTION(USE_EXT_HTTP_PARSER		"Use system HTTP_Parser if available"			 ON)
 OPTION(DEBUG_POOL			"Enable debug pool allocator"				OFF)
 OPTION(ENABLE_WERROR			"Enable compilation with -Werror"			OFF)
 OPTION(USE_BUNDLED_ZLIB    		"Use the bundled version of zlib"			OFF)
-   SET(CLAR_XML 			"OFF"					       CACHE STRING
-       "Writes test results in XML format.  One of ON, OFF or the directory to write to; this does not affect the output executables, this only affects the behavior of the ctest command.")
 
 IF (UNIX AND NOT APPLE)
 	OPTION(ENABLE_REPRODUCIBLE_BUILDS "Enable reproducible builds"				OFF)
@@ -230,6 +231,9 @@ ELSE ()
 	ENABLE_WARNINGS(shift-count-overflow)
 	DISABLE_WARNINGS(unused-const-variable)
 	DISABLE_WARNINGS(unused-function)
+	ENABLE_WARNINGS(format)
+	ENABLE_WARNINGS(format-security)
+	ENABLE_WARNINGS(int-conversion)
 
 	IF (APPLE) # Apple deprecated OpenSSL
 	    DISABLE_WARNINGS(deprecated-declarations)
