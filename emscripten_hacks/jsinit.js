@@ -1,3 +1,10 @@
+/**
+ * replace jsgitprogresscallback with your own progress message handler.
+ */
+jsgitprogresscallback = function(progressmessage) {
+    console.log(progressmessage);
+}
+
 jsgitinit = cwrap('jsgitinit', null, []);
 jsgitclone = cwrap('jsgitclone', null, ['string', 'string']);
 jsgitinitrepo = cwrap('jsgitinitrepo', null, ['number']);

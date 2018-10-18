@@ -41,13 +41,14 @@ static void print_progress(const progress_data *pd)
 		: 0;
 	int kbytes = pd->fetch_progress.received_bytes / 1024;
 
+	char *progress_string;
 	if (pd->fetch_progress.total_objects &&
 		pd->fetch_progress.received_objects == pd->fetch_progress.total_objects) {
-		printf("Resolving deltas %d/%d\n",
+		asprintf(&progress_string,"Resolving deltas %d/%d\n",
 		       pd->fetch_progress.indexed_deltas,
 		       pd->fetch_progress.total_deltas);
 	} else {
-		printf("net %3d%% (%4d kb, %5d/%5d)  /  idx %3d%% (%5d/%5d)  /  chk %3d%% (%4" PRIuZ "/%4" PRIuZ ") %s\n",
+		asprintf(&progress_string,"net %3d%% (%4d kb, %5d/%5d)  /  idx %3d%% (%5d/%5d)  /  chk %3d%% (%4" PRIuZ "/%4" PRIuZ ") %s\n",
 		   network_percent, kbytes,
 		   pd->fetch_progress.received_objects, pd->fetch_progress.total_objects,
 		   index_percent, pd->fetch_progress.indexed_objects, pd->fetch_progress.total_objects,
@@ -55,14 +56,18 @@ static void print_progress(const progress_data *pd)
 		   pd->completed_steps, pd->total_steps,
 		   pd->path);
 	}
+	EM_ASM_({jsgitprogresscallback(Pointer_stringify($0));}, progress_string);
+	free(progress_string);
 }
 
 static int sideband_progress(const char *str, int len, void *payload)
 {
 	(void)payload; // unused
 
-	printf("remote: %.*s\n", len, str);
-	fflush(stdout);
+	char *progress_string;
+	asprintf(&progress_string, "remote: %.*s\n", len, str);
+	EM_ASM_({jsgitprogresscallback(Pointer_stringify($0));}, progress_string);
+	free(progress_string);
 	return 0;
 }
 
