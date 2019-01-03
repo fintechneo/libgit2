@@ -7,7 +7,7 @@ $PSDefaultParameterValues['*:ErrorAction'] = 'Stop'
 
 $SourceDir = Split-Path (Split-Path (Get-Variable MyInvocation).Value.MyCommand.Path)
 $BuildDir = Get-Location
-$Success = $true
+$global:Success = $true
 
 if ($Env:SKIP_TESTS) { exit }
 
@@ -19,13 +19,18 @@ if ($Env:SKIP_TESTS) { exit }
 function run_test {
 	$TestName = $args[0]
 
+	$TestCommand = (ctest -N -V -R "^$TestName$") -join "`n"
+
+	if (-Not ($TestCommand -match "(?ms).*\n^[0-9]*: Test command: ")) {
+		echo "Could not find tests: $TestName"
+		exit
+	}
+
 	$TestCommand = (ctest -N -V -R "^$TestName$") -join "`n" -replace "(?ms).*\n^[0-9]*: Test command: ","" -replace "\n.*",""
 	$TestCommand += " -r${BuildDir}\results_${TestName}.xml"
 
-	Write-Host $TestCommand
 	Invoke-Expression $TestCommand
-
-	if ($LastExitCode -ne 0) { $Success = $false }
+	if ($LastExitCode -ne 0) { $global:Success = $false }
 }
 
 Write-Host "##############################################################################"
@@ -60,7 +65,7 @@ if (-not $Env:SKIP_PROXY_TESTS) {
 	Write-Host "Running proxy tests"
 	Write-Host ""
 
-	$Env:GITTEST_REMOTE_PROXY_URL="localhost:8080"
+	$Env:GITTEST_REMOTE_PROXY_HOST="localhost:8080"
 	$Env:GITTEST_REMOTE_PROXY_USER="foo"
 	$Env:GITTEST_REMOTE_PROXY_PASS="bar"
 
@@ -69,4 +74,4 @@ if (-not $Env:SKIP_PROXY_TESTS) {
 	taskkill /F /IM javaw.exe
 }
 
-if (-not $Success) { exit 1 }
+if (-Not $global:Success) { exit 1 }

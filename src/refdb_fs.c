@@ -894,7 +894,7 @@ static int packed_find_peel(refdb_fs_backend *backend, struct packref *ref)
 	/*
 	 * Find the tagged object in the repository
 	 */
-	if (git_object_lookup(&object, backend->repo, &ref->oid, GIT_OBJ_ANY) < 0)
+	if (git_object_lookup(&object, backend->repo, &ref->oid, GIT_OBJECT_ANY) < 0)
 		return -1;
 
 	/*
@@ -902,7 +902,7 @@ static int packed_find_peel(refdb_fs_backend *backend, struct packref *ref)
 	 * if the ref is actually a 'weak' ref, we don't need to resolve
 	 * anything.
 	 */
-	if (git_object_type(object) == GIT_OBJ_TAG) {
+	if (git_object_type(object) == GIT_OBJECT_TAG) {
 		git_tag *tag = (git_tag *)object;
 
 		/*
@@ -1090,7 +1090,6 @@ fail:
 static int reflog_append(refdb_fs_backend *backend, const git_reference *ref, const git_oid *old, const git_oid *new, const git_signature *author, const char *message);
 static int has_reflog(git_repository *repo, const char *name);
 
-/* We only write if it's under heads/, remotes/ or notes/ or if it already has a log */
 static int should_write_reflog(int *write, git_repository *repo, const char *name)
 {
 	int error, logall;
@@ -1103,17 +1102,26 @@ static int should_write_reflog(int *write, git_repository *repo, const char *nam
 	if (logall == GIT_LOGALLREFUPDATES_UNSET)
 		logall = !git_repository_is_bare(repo);
 
-	if (!logall) {
+	*write = 0;
+	switch (logall) {
+	case GIT_LOGALLREFUPDATES_FALSE:
 		*write = 0;
-	} else if (has_reflog(repo, name)) {
+		break;
+
+	case GIT_LOGALLREFUPDATES_TRUE:
+		/* Only write if it already has a log,
+		 * or if it's under heads/, remotes/ or notes/
+		 */
+		*write = has_reflog(repo, name) ||
+			!git__prefixcmp(name, GIT_REFS_HEADS_DIR) ||
+			!git__strcmp(name, GIT_HEAD_FILE) ||
+			!git__prefixcmp(name, GIT_REFS_REMOTES_DIR) ||
+			!git__prefixcmp(name, GIT_REFS_NOTES_DIR);
+		break;
+
+	case GIT_LOGALLREFUPDATES_ALWAYS:
 		*write = 1;
-	} else if (!git__prefixcmp(name, GIT_REFS_HEADS_DIR) ||
-		   !git__strcmp(name, GIT_HEAD_FILE) ||
-		   !git__prefixcmp(name, GIT_REFS_REMOTES_DIR) ||
-		   !git__prefixcmp(name, GIT_REFS_NOTES_DIR)) {
-		*write = 1;
-	} else {
-		*write = 0;
+		break;
 	}
 
 	return 0;
@@ -1305,6 +1313,43 @@ on_error:
         return error;
 }
 
+static void refdb_fs_backend__try_delete_empty_ref_hierarchie(
+	refdb_fs_backend *backend,
+	const char *ref_name,
+	bool reflog)
+{
+	git_buf relative_path = GIT_BUF_INIT;
+	git_buf base_path = GIT_BUF_INIT;
+	size_t commonlen;
+
+	assert(backend && ref_name);
+
+	if (git_buf_sets(&relative_path, ref_name) < 0)
+		goto cleanup;
+
+	git_path_squash_slashes(&relative_path);
+	if ((commonlen = git_path_common_dirlen("refs/heads/", git_buf_cstr(&relative_path))) == strlen("refs/heads/") ||
+		(commonlen = git_path_common_dirlen("refs/tags/", git_buf_cstr(&relative_path))) == strlen("refs/tags/") ||
+		(commonlen = git_path_common_dirlen("refs/remotes/", git_buf_cstr(&relative_path))) == strlen("refs/remotes/")) {
+
+		git_buf_truncate(&relative_path, commonlen);
+
+		if (reflog) {
+			if (git_buf_join3(&base_path, '/', backend->commonpath, GIT_REFLOG_DIR, git_buf_cstr(&relative_path)) < 0)
+				goto cleanup;
+		} else {
+			if (git_buf_joinpath(&base_path, backend->commonpath, git_buf_cstr(&relative_path)) < 0)
+				goto cleanup;
+		}
+
+		git_futils_rmdir_r(ref_name + commonlen, git_buf_cstr(&base_path), GIT_RMDIR_EMPTY_PARENTS | GIT_RMDIR_SKIP_ROOT);
+	}
+
+cleanup:
+	git_buf_dispose(&relative_path);
+	git_buf_dispose(&base_path);
+}
+
 static int refdb_fs_backend__delete(
 	git_refdb_backend *_backend,
 	const char *ref_name,
@@ -1385,7 +1430,8 @@ static int refdb_fs_backend__delete_tail(
 cleanup:
 	git_buf_dispose(&loose_path);
 	git_filebuf_cleanup(file);
-
+	if (loose_deleted)
+		refdb_fs_backend__try_delete_empty_ref_hierarchie(backend, ref_name, false);
 	return error;
 }
 
@@ -1713,7 +1759,7 @@ static int refdb_reflog_fs__read(git_reflog **out, git_refdb_backend *_backend, 
 	if ((error == GIT_ENOTFOUND) &&
 		((error = create_new_reflog_file(git_buf_cstr(&log_path))) < 0))
 		goto cleanup;
- 
+
 	if ((error = reflog_parse(log,
 		git_buf_cstr(&log_file), git_buf_len(&log_file))) < 0)
 		goto cleanup;
@@ -1973,7 +2019,7 @@ static int refdb_reflog_fs__rename(git_refdb_backend *_backend, const char *old_
 		goto cleanup;
 	}
 
-	if (git_path_isdir(git_buf_cstr(&new_path)) && 
+	if (git_path_isdir(git_buf_cstr(&new_path)) &&
 		(git_futils_rmdir_r(git_buf_cstr(&new_path), NULL, GIT_RMDIR_SKIP_NONEMPTY) < 0)) {
 		error = -1;
 		goto cleanup;
@@ -2000,26 +2046,27 @@ cleanup:
 
 static int refdb_reflog_fs__delete(git_refdb_backend *_backend, const char *name)
 {
-	int error;
+	refdb_fs_backend *backend = (refdb_fs_backend *) _backend;
 	git_buf path = GIT_BUF_INIT;
-
-	git_repository *repo;
-	refdb_fs_backend *backend;
+	int error;
 
 	assert(_backend && name);
 
-	backend = (refdb_fs_backend *) _backend;
-	repo = backend->repo;
+	if ((error = retrieve_reflog_path(&path, backend->repo, name)) < 0)
+		goto out;
 
-	error = retrieve_reflog_path(&path, repo, name);
+	if (!git_path_exists(path.ptr))
+		goto out;
 
-	if (!error && git_path_exists(path.ptr))
-		error = p_unlink(path.ptr);
+	if ((error = p_unlink(path.ptr)) < 0)
+		goto out;
 
+	refdb_fs_backend__try_delete_empty_ref_hierarchie(backend, name, true);
+
+out:
 	git_buf_dispose(&path);
 
 	return error;
-
 }
 
 int git_refdb_backend_fs(

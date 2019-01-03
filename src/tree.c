@@ -271,16 +271,16 @@ const git_oid *git_tree_entry_id(const git_tree_entry *entry)
 	return entry->oid;
 }
 
-git_otype git_tree_entry_type(const git_tree_entry *entry)
+git_object_t git_tree_entry_type(const git_tree_entry *entry)
 {
 	assert(entry);
 
 	if (S_ISGITLINK(entry->attr))
-		return GIT_OBJ_COMMIT;
+		return GIT_OBJECT_COMMIT;
 	else if (S_ISDIR(entry->attr))
-		return GIT_OBJ_TREE;
+		return GIT_OBJECT_TREE;
 	else
-		return GIT_OBJ_BLOB;
+		return GIT_OBJECT_BLOB;
 }
 
 int git_tree_entry_to_object(
@@ -289,7 +289,7 @@ int git_tree_entry_to_object(
 	const git_tree_entry *entry)
 {
 	assert(entry && object_out);
-	return git_object_lookup(object_out, repo, entry->oid, GIT_OBJ_ANY);
+	return git_object_lookup(object_out, repo, entry->oid, GIT_OBJECT_ANY);
 }
 
 static const git_tree_entry *entry_fromname(
@@ -356,21 +356,21 @@ static int tree_error(const char *str, const char *path)
 	return -1;
 }
 
-static int parse_mode(unsigned int *modep, const char *buffer, const char **buffer_out)
+static int parse_mode(uint16_t *mode_out, const char *buffer, size_t buffer_len, const char **buffer_out)
 {
-	unsigned char c;
-	unsigned int mode = 0;
+	int32_t mode;
+	int error;
 
-	if (*buffer == ' ')
+	if (!buffer_len || git__isspace(*buffer))
 		return -1;
 
-	while ((c = *buffer++) != ' ') {
-		if (c < '0' || c > '7')
-			return -1;
-		mode = (mode << 3) + (c - '0');
-	}
-	*modep = mode;
-	*buffer_out = buffer;
+	if ((error = git__strntol32(&mode, buffer, buffer_len, buffer_out, 8)) < 0)
+		return error;
+
+	if (mode < 0 || mode > UINT16_MAX)
+		return -1;
+
+	*mode_out = mode;
 
 	return 0;
 }
@@ -392,10 +392,13 @@ int git_tree__parse_raw(void *_tree, const char *data, size_t size)
 		git_tree_entry *entry;
 		size_t filename_len;
 		const char *nul;
-		unsigned int attr;
+		uint16_t attr;
 
-		if (parse_mode(&attr, buffer, &buffer) < 0 || !buffer)
+		if (parse_mode(&attr, buffer, buffer_end - buffer, &buffer) < 0 || !buffer)
 			return tree_error("failed to parse tree: can't parse filemode", NULL);
+
+		if (buffer >= buffer_end || (*buffer++) != ' ')
+			return tree_error("failed to parse tree: missing space after filemode", NULL);
 
 		if ((nul = memchr(buffer, 0, buffer_end - buffer)) == NULL)
 			return tree_error("failed to parse tree: object is corrupted", NULL);
@@ -456,6 +459,36 @@ static size_t find_next_dir(const char *dirname, git_index *index, size_t start)
 	return i;
 }
 
+static git_object_t otype_from_mode(git_filemode_t filemode)
+{
+	switch (filemode) {
+	case GIT_FILEMODE_TREE:
+		return GIT_OBJECT_TREE;
+	case GIT_FILEMODE_COMMIT:
+		return GIT_OBJECT_COMMIT;
+	default:
+		return GIT_OBJECT_BLOB;
+	}
+}
+
+static int check_entry(git_repository *repo, const char *filename, const git_oid *id, git_filemode_t filemode)
+{
+	if (!valid_filemode(filemode))
+		return tree_error("failed to insert entry: invalid filemode for file", filename);
+
+	if (!valid_entry_name(repo, filename))
+		return tree_error("failed to insert entry: invalid name for a tree entry", filename);
+
+	if (git_oid_iszero(id))
+		return tree_error("failed to insert entry: invalid null OID", filename);
+
+	if (filemode != GIT_FILEMODE_COMMIT &&
+	    !git_object__is_valid(repo, id, otype_from_mode(filemode)))
+		return tree_error("failed to insert entry: invalid object specified", filename);
+
+	return 0;
+}
+
 static int append_entry(
 	git_treebuilder *bld,
 	const char *filename,
@@ -466,11 +499,8 @@ static int append_entry(
 	git_tree_entry *entry;
 	int error = 0;
 
-	if (validate && !valid_entry_name(bld->repo, filename))
-		return tree_error("failed to insert entry: invalid name for a tree entry", filename);
-
-	if (validate && git_oid_iszero(id))
-		return tree_error("failed to insert entry: invalid null OID for a tree entry", filename);
+	if (validate && ((error = check_entry(bld->repo, filename, id, filemode)) < 0))
+		return error;
 
 	entry = alloc_entry(filename, strlen(filename), id);
 	GITERR_CHECK_ALLOC(entry);
@@ -684,18 +714,6 @@ on_error:
 	return -1;
 }
 
-static git_otype otype_from_mode(git_filemode_t filemode)
-{
-	switch (filemode) {
-	case GIT_FILEMODE_TREE:
-		return GIT_OBJ_TREE;
-	case GIT_FILEMODE_COMMIT:
-		return GIT_OBJ_COMMIT;
-	default:
-		return GIT_OBJ_BLOB;
-	}
-}
-
 int git_treebuilder_insert(
 	const git_tree_entry **entry_out,
 	git_treebuilder *bld,
@@ -705,22 +723,12 @@ int git_treebuilder_insert(
 {
 	git_tree_entry *entry;
 	int error;
-	git_strmap_iter pos;
+	size_t pos;
 
 	assert(bld && id && filename);
 
-	if (!valid_filemode(filemode))
-		return tree_error("failed to insert entry: invalid filemode for file", filename);
-
-	if (!valid_entry_name(bld->repo, filename))
-		return tree_error("failed to insert entry: invalid name for a tree entry", filename);
-
-	if (git_oid_iszero(id))
-		return tree_error("failed to insert entry: invalid null OID", filename);
-
-	if (filemode != GIT_FILEMODE_COMMIT &&
-	    !git_object__is_valid(bld->repo, id, otype_from_mode(filemode)))
-		return tree_error("failed to insert entry: invalid object specified", filename);
+	if ((error = check_entry(bld->repo, filename, id, filemode)) < 0)
+		return error;
 
 	pos = git_strmap_lookup_index(bld->map, filename);
 	if (git_strmap_valid_index(bld->map, pos)) {
@@ -750,7 +758,7 @@ int git_treebuilder_insert(
 static git_tree_entry *treebuilder_get(git_treebuilder *bld, const char *filename)
 {
 	git_tree_entry *entry = NULL;
-	git_strmap_iter pos;
+	size_t pos;
 
 	assert(bld && filename);
 
@@ -832,7 +840,7 @@ int git_treebuilder_write_with_buffer(git_oid *oid, git_treebuilder *bld, git_bu
 	}
 
 	if ((error = git_repository_odb__weakptr(&odb, bld->repo)) == 0)
-		error = git_odb_write(oid, odb, tree->ptr, tree->size, GIT_OBJ_TREE);
+		error = git_odb_write(oid, odb, tree->ptr, tree->size, GIT_OBJECT_TREE);
 
 out:
 	git_vector_free(&entries);
@@ -1119,7 +1127,7 @@ static int create_popped_tree(tree_stack_entry *current, tree_stack_entry *poppe
 	if (current->tree) {
 		const git_tree_entry *to_replace;
 		to_replace = git_tree_entry_byname(current->tree, component->ptr);
-		if (to_replace && git_tree_entry_type(to_replace) != GIT_OBJ_TREE) {
+		if (to_replace && git_tree_entry_type(to_replace) != GIT_OBJECT_TREE) {
 			giterr_set(GITERR_TREE, "D/F conflict when updating tree");
 			return -1;
 		}
@@ -1196,7 +1204,7 @@ int git_tree_create_updated(git_oid *out, git_repository *repo, git_tree *baseli
 			if (!entry)
 				entry = treebuilder_get(last->bld, component.ptr);
 
-			if (entry && git_tree_entry_type(entry) != GIT_OBJ_TREE) {
+			if (entry && git_tree_entry_type(entry) != GIT_OBJECT_TREE) {
 				giterr_set(GITERR_TREE, "D/F conflict when updating tree");
 				error = -1;
 				goto cleanup;

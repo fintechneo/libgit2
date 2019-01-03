@@ -48,7 +48,7 @@ struct git_indexer {
 	unsigned int mode;
 	git_off_t off;
 	git_off_t entry_start;
-	git_otype entry_type;
+	git_object_t entry_type;
 	git_buf entry_data;
 	git_packfile_stream stream;
 	size_t nr_objects;
@@ -219,7 +219,7 @@ static int store_delta(git_indexer *idx)
 	return 0;
 }
 
-static int hash_header(git_hash_ctx *ctx, git_off_t len, git_otype type)
+static int hash_header(git_hash_ctx *ctx, git_off_t len, git_object_t type)
 {
 	char buffer[64];
 	size_t hdrlen;
@@ -255,13 +255,13 @@ static int hash_object_stream(git_indexer*idx, git_packfile_stream *stream)
 }
 
 /* In order to create the packfile stream, we need to skip over the delta base description */
-static int advance_delta_offset(git_indexer *idx, git_otype type)
+static int advance_delta_offset(git_indexer *idx, git_object_t type)
 {
 	git_mwindow *w = NULL;
 
-	assert(type == GIT_OBJ_REF_DELTA || type == GIT_OBJ_OFS_DELTA);
+	assert(type == GIT_OBJECT_REF_DELTA || type == GIT_OBJECT_OFS_DELTA);
 
-	if (type == GIT_OBJ_REF_DELTA) {
+	if (type == GIT_OBJECT_REF_DELTA) {
 		idx->off += GIT_OID_RAWSZ;
 	} else {
 		git_off_t base_off = get_delta_base(idx->pack, &w, &idx->off, type, idx->entry_start);
@@ -338,10 +338,10 @@ static int check_object_connectivity(git_indexer *idx, const git_rawobj *obj)
 	size_t keyidx;
 	int error;
 
-	if (obj->type != GIT_OBJ_BLOB &&
-	    obj->type != GIT_OBJ_TREE &&
-	    obj->type != GIT_OBJ_COMMIT &&
-	    obj->type != GIT_OBJ_TAG)
+	if (obj->type != GIT_OBJECT_BLOB &&
+	    obj->type != GIT_OBJECT_TREE &&
+	    obj->type != GIT_OBJECT_COMMIT &&
+	    obj->type != GIT_OBJECT_TAG)
 		return 0;
 
 	if ((error = git_object__from_raw(&object, obj->data, obj->len, obj->type)) < 0)
@@ -362,7 +362,7 @@ static int check_object_connectivity(git_indexer *idx, const git_rawobj *obj)
 		return 0;
 
 	switch (obj->type) {
-		case GIT_OBJ_TREE:
+		case GIT_OBJECT_TREE:
 		{
 			git_tree *tree = (git_tree *) object;
 			git_tree_entry *entry;
@@ -373,7 +373,7 @@ static int check_object_connectivity(git_indexer *idx, const git_rawobj *obj)
 
 			break;
 		}
-		case GIT_OBJ_COMMIT:
+		case GIT_OBJECT_COMMIT:
 		{
 			git_commit *commit = (git_commit *) object;
 			git_oid *parent_oid;
@@ -386,7 +386,7 @@ static int check_object_connectivity(git_indexer *idx, const git_rawobj *obj)
 
 			break;
 		}
-		case GIT_OBJ_TAG:
+		case GIT_OBJECT_TAG:
 		{
 			git_tag *tag = (git_tag *) object;
 
@@ -394,7 +394,7 @@ static int check_object_connectivity(git_indexer *idx, const git_rawobj *obj)
 
 			break;
 		}
-		case GIT_OBJ_BLOB:
+		case GIT_OBJECT_BLOB:
 		default:
 			break;
 	}
@@ -408,7 +408,7 @@ out:
 static int store_object(git_indexer *idx)
 {
 	int i, error;
-	khiter_t k;
+	size_t k;
 	git_oid oid;
 	struct entry *entry;
 	git_off_t entry_size;
@@ -489,7 +489,7 @@ GIT_INLINE(bool) has_entry(git_indexer *idx, git_oid *id)
 static int save_entry(git_indexer *idx, struct entry *entry, struct git_pack_entry *pentry, git_off_t entry_start)
 {
 	int i, error;
-	khiter_t k;
+	size_t k;
 
 	if (entry_start > UINT31_MAX) {
 		entry->offset = UINT32_MAX;
@@ -673,7 +673,7 @@ static int read_stream_object(git_indexer *idx, git_transfer_progress *stats)
 	git_packfile_stream *stream = &idx->stream;
 	git_off_t entry_start = idx->off;
 	size_t entry_size;
-	git_otype type;
+	git_object_t type;
 	git_mwindow *w = NULL;
 	int error;
 
@@ -694,7 +694,7 @@ static int read_stream_object(git_indexer *idx, git_transfer_progress *stats)
 		git_hash_init(&idx->hash_ctx);
 		git_buf_clear(&idx->entry_data);
 
-		if (type == GIT_OBJ_REF_DELTA || type == GIT_OBJ_OFS_DELTA) {
+		if (type == GIT_OBJECT_REF_DELTA || type == GIT_OBJECT_OFS_DELTA) {
 			error = advance_delta_offset(idx, type);
 			if (error == GIT_EBUFS) {
 				idx->off = entry_start;
@@ -947,7 +947,7 @@ static int fix_thin_pack(git_indexer *idx, git_transfer_progress *stats)
 	unsigned int i;
 	struct delta_info *delta;
 	size_t size;
-	git_otype type;
+	git_object_t type;
 	git_mwindow *w = NULL;
 	git_off_t curpos = 0;
 	unsigned char *base_info;
@@ -971,7 +971,7 @@ static int fix_thin_pack(git_indexer *idx, git_transfer_progress *stats)
 		if (error < 0)
 			return error;
 
-		if (type == GIT_OBJ_REF_DELTA) {
+		if (type == GIT_OBJECT_REF_DELTA) {
 			found_ref_delta = 1;
 			break;
 		}
@@ -1309,7 +1309,7 @@ on_error:
 
 void git_indexer_free(git_indexer *idx)
 {
-	khiter_t pos;
+	size_t pos;
 
 	if (idx == NULL)
 		return;

@@ -14,7 +14,7 @@ USER=${USER:-$(whoami)}
 SUCCESS=1
 
 VALGRIND="valgrind --leak-check=full --show-reachable=yes --error-exitcode=125 --num-callers=50 --suppressions=\"$SOURCE_DIR/libgit2_clar.supp\""
-LEAKS="MallocStackLogging=1 MallocScribble=1 leaks -quiet -atExit -- nohup"
+LEAKS="MallocStackLogging=1 MallocScribble=1 MallocLogFile=/dev/null CLAR_AT_EXIT=\"leaks -quiet \$PPID\""
 
 cleanup() {
 	echo "Cleaning up..."
@@ -44,6 +44,12 @@ failure() {
 # JUnit-style XML files.
 run_test() {
 	TEST_CMD=$(ctest -N -V -R "^${1}$" | sed -n 's/^[0-9]*: Test command: //p')
+
+	if [ -z "$TEST_CMD" ]; then
+		echo "Could not find tests: $1"
+		exit 1
+	fi
+
 	TEST_CMD="${TEST_CMD} -r${BUILD_DIR}/results_${1}.xml"
 
 	if [ "$LEAK_CHECK" = "valgrind" ]; then
@@ -73,8 +79,8 @@ fi
 
 if [ -z "$SKIP_PROXY_TESTS" ]; then
 	echo "Starting HTTP proxy..."
-	curl -L https://github.com/ethomson/poxyproxy/releases/download/v0.1.0/poxyproxy-0.1.0.jar >poxyproxy.jar
-	java -jar poxyproxy.jar -d --port 8080 --credentials foo:bar >/dev/null 2>&1 &
+	curl -L https://github.com/ethomson/poxyproxy/releases/download/v0.2.0/poxyproxy-0.2.0.jar >poxyproxy.jar
+	java -jar poxyproxy.jar -d --address 127.0.0.1 --port 8080 --credentials foo:bar >/dev/null 2>&1 &
 fi
 
 if [ -z "$SKIP_SSH_TESTS" ]; then
@@ -158,11 +164,11 @@ if [ -z "$SKIP_PROXY_TESTS" ]; then
 	echo "Running proxy tests"
 	echo ""
 
-	export GITTEST_REMOTE_PROXY_URL="localhost:8080"
+	export GITTEST_REMOTE_PROXY_HOST="localhost:8080"
 	export GITTEST_REMOTE_PROXY_USER="foo"
 	export GITTEST_REMOTE_PROXY_PASS="bar"
 	run_test proxy
-	unset GITTEST_REMOTE_PROXY_URL
+	unset GITTEST_REMOTE_PROXY_HOST
 	unset GITTEST_REMOTE_PROXY_USER
 	unset GITTEST_REMOTE_PROXY_PASS
 fi

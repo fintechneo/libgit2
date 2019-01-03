@@ -534,6 +534,26 @@ void test_config_read__fallback_from_local_to_global_and_from_global_to_system(v
 	git_config_free(cfg);
 }
 
+void test_config_read__parent_dir_is_file(void)
+{
+	git_config *cfg;
+	int count;
+
+	cl_git_pass(git_config_new(&cfg));
+	/*
+	 * Verify we can add non-existing files when the parent directory is not
+	 * a directory.
+	 */
+	cl_git_pass(git_config_add_file_ondisk(cfg, "/dev/null/.gitconfig",
+		GIT_CONFIG_LEVEL_SYSTEM, NULL, 0));
+
+	count = 0;
+	cl_git_pass(git_config_foreach(cfg, count_cfg_entries_and_compare_levels, &count));
+	cl_assert_equal_i(0, count);
+
+	git_config_free(cfg);
+}
+
 /*
  * At the beginning of the test, config18 has:
  *	int32global = 28
@@ -753,6 +773,36 @@ void test_config_read__bom(void)
 	cl_git_mkfile("./testconfig", "\xEF\xBB\xBF[some]\n var = value\n");
 	cl_git_pass(git_config_open_ondisk(&cfg, "./testconfig"));
 	cl_git_pass(git_config_get_string_buf(&buf, cfg, "some.var"));
+	cl_assert_equal_s(buf.ptr, "value");
+
+	git_config_free(cfg);
+	git_buf_dispose(&buf);
+}
+
+void test_config_read__single_line(void)
+{
+	git_buf buf = GIT_BUF_INIT;
+	git_config *cfg;
+
+	cl_set_cleanup(&clean_test_config, NULL);
+	cl_git_mkfile("./testconfig", "[some] var = value\n[some \"OtheR\"] var = value");
+	cl_git_pass(git_config_open_ondisk(&cfg, "./testconfig"));
+	cl_git_pass(git_config_get_string_buf(&buf, cfg, "some.var"));
+	cl_assert_equal_s(buf.ptr, "value");
+
+	git_buf_clear(&buf);
+	cl_git_pass(git_config_get_string_buf(&buf, cfg, "some.OtheR.var"));
+	cl_assert_equal_s(buf.ptr, "value");
+
+	git_config_free(cfg);
+	cl_git_mkfile("./testconfig", "[some] var = value\n[some \"OtheR\"]var = value");
+	cl_git_pass(git_config_open_ondisk(&cfg, "./testconfig"));
+	git_buf_clear(&buf);
+	cl_git_pass(git_config_get_string_buf(&buf, cfg, "some.var"));
+	cl_assert_equal_s(buf.ptr, "value");
+
+	git_buf_clear(&buf);
+	cl_git_pass(git_config_get_string_buf(&buf, cfg, "some.OtheR.var"));
 	cl_assert_equal_s(buf.ptr, "value");
 
 	git_config_free(cfg);

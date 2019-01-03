@@ -88,12 +88,12 @@ static int validate_tree_and_parents(git_array_oid_t *parents, git_repository *r
 	git_oid *parent_cpy;
 	const git_oid *parent;
 
-	if (validate && !git_object__is_valid(repo, tree, GIT_OBJ_TREE))
+	if (validate && !git_object__is_valid(repo, tree, GIT_OBJECT_TREE))
 		return -1;
 
 	i = 0;
 	while ((parent = parent_cb(i, parent_payload)) != NULL) {
-		if (validate && !git_object__is_valid(repo, parent, GIT_OBJ_COMMIT)) {
+		if (validate && !git_object__is_valid(repo, parent, GIT_OBJECT_COMMIT)) {
 			error = -1;
 			goto on_error;
 		}
@@ -164,7 +164,7 @@ static int git_commit__create_internal(
 	if (git_odb__freshen(odb, tree) < 0)
 		goto cleanup;
 
-	if (git_odb_write(id, odb, buf.ptr, buf.size, GIT_OBJ_COMMIT) < 0)
+	if (git_odb_write(id, odb, buf.ptr, buf.size, GIT_OBJECT_COMMIT) < 0)
 		goto cleanup;
 
 
@@ -420,7 +420,7 @@ int git_commit__parse_raw(void *_commit, const char *data, size_t size)
 		return -1;
 
 	/* Some tools create multiple author fields, ignore the extra ones */
-	while ((size_t)(buffer_end - buffer) >= strlen("author ") && !git__prefixcmp(buffer, "author ")) {
+	while (!git__prefixncmp(buffer, buffer_end - buffer, "author ")) {
 		if (git_signature__parse(&dummy_sig, &buffer, buffer_end, "author ", '\n') < 0)
 			return -1;
 
@@ -444,7 +444,7 @@ int git_commit__parse_raw(void *_commit, const char *data, size_t size)
 		while (eoln < buffer_end && *eoln != '\n')
 			++eoln;
 
-		if (git__prefixcmp(buffer, "encoding ") == 0) {
+		if (git__prefixncmp(buffer, buffer_end - buffer, "encoding ") == 0) {
 			buffer += strlen("encoding ");
 
 			commit->message_encoding = git__strndup(buffer, eoln - buffer);
@@ -730,7 +730,7 @@ int git_commit_extract_signature(git_buf *signature, git_buf *signed_data, git_r
 	if ((error = git_odb_read(&obj, odb, commit_id)) < 0)
 		return error;
 
-	if (obj->cached.type != GIT_OBJ_COMMIT) {
+	if (obj->cached.type != GIT_OBJECT_COMMIT) {
 		giterr_set(GITERR_INVALID, "the requested type does not match the type in ODB");
 		error = GIT_ENOTFOUND;
 		goto cleanup;
@@ -890,7 +890,7 @@ int git_commit_create_with_signature(
 	if ((error = git_repository_odb__weakptr(&odb, repo)) < 0)
 		goto cleanup;
 
-	if ((error = git_odb_write(out, odb, commit.ptr, commit.size, GIT_OBJ_COMMIT)) < 0)
+	if ((error = git_odb_write(out, odb, commit.ptr, commit.size, GIT_OBJECT_COMMIT)) < 0)
 		goto cleanup;
 
 cleanup:
