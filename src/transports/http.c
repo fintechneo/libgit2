@@ -1075,7 +1075,7 @@ replay:
 			
 	#ifdef __EMSCRIPTEN__
 	// When using emscripten we simply bypass the http parser since we use the one built into the browser
-	*(bytes_read)  = git_stream_read(t->io, buffer, buf_size);	
+	*(bytes_read)  = git_stream_read(t->server.stream, buffer, buf_size);	
 	#endif
 
 	#ifndef __EMSCRIPTEN__
