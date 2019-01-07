@@ -121,3 +121,10 @@ jobs:
       environmentVariables:
         CMAKE_OPTIONS: -G"MinGW Makefiles"
         PATH: $(Agent.TempDirectory)\mingw32\bin;C:\ProgramData\Oracle\Java\javapath;C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;C:\Windows\System32\WindowsPowerShell\v1.0\;C:\Program Files (x86)\CMake\bin
+
+- job: emscripten
+  displayName: 'Emscripten (javascript)'
+  pool:
+    vmImage: 'Ubuntu 16.04'
+  steps:
+  - script: docker run -v $(Build.SourcesDirectory):/libgit2 psalomo/libgit2.js
