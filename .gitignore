@@ -31,5 +31,14 @@ msvc/Release/
 .*.swp
 tags
 mkmf.log
+
+emscripten_hacks/src
+emscripten_hacks/deps
+emscripten_hacks/CMake*
+emscripten_hacks/libgit2.pc
+emscripten_hacks/Makefile
+emscripten_hacks/node_modules
+
+.vscode
 *.profdata
 *.profraw

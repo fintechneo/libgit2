@@ -634,9 +634,10 @@ static void clear_parser_state(http_subtransport *t)
 }
 
 static int write_chunk(git_stream *io, const char *buffer, size_t len)
-{
+{	
+	#ifndef __EMSCRIPTEN__
 	git_buf buf = GIT_BUF_INIT;
-
+	
 	/* Chunk header */
 	git_buf_printf(&buf, "%" PRIxZ "\r\n", len);
 
@@ -650,14 +651,19 @@ static int write_chunk(git_stream *io, const char *buffer, size_t len)
 
 	git_buf_dispose(&buf);
 
+	#endif
+
 	/* Chunk body */
 	if (len > 0 && git_stream__write_full(io, buffer, len, 0) < 0)
 		return -1;
 
+	#ifndef __EMSCRIPTEN__
+		
 	/* Chunk footer */
 	if (git_stream__write_full(io, "\r\n", 2, 0) < 0)
 		return -1;
 
+	#endif
 	return 0;
 }
 
@@ -1020,7 +1026,7 @@ static int http_stream_read(
 	http_subtransport *t = OWNING_SUBTRANSPORT(s);
 	parser_context ctx;
 	size_t bytes_parsed;
-
+	
 replay:
 	*bytes_read = 0;
 
@@ -1058,14 +1064,26 @@ replay:
 			s->chunk_buffer_len = 0;
 
 			/* Write the final chunk. */
+			/*
+			
+			// Removed. Works with regular git backend, but not with Eclipse JGit which expects
+			// EOF here and complains if there are more data
+			
 			if (git_stream__write_full(t->server.stream,
 						   "0\r\n\r\n", 5, 0) < 0)
 				return -1;
+			*/
 		}
 
 		s->received_response = 1;
 	}
+			
+	#ifdef __EMSCRIPTEN__
+	// When using emscripten we simply bypass the http parser since we use the one built into the browser
+	*(bytes_read)  = git_stream_read(t->server.stream, buffer, buf_size);	
+	#endif
 
+	#ifndef __EMSCRIPTEN__
 	while (!*bytes_read && !t->parse_finished) {
 		size_t data_offset;
 		int error;
@@ -1135,7 +1153,8 @@ replay:
 			return -1;
 		}
 	}
-
+	#endif	
+	
 	return 0;
 }
 
@@ -1209,7 +1228,7 @@ static int http_stream_write_chunked(
 			}
 		}
 	}
-
+	
 	return 0;
 }
 
