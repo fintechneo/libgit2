@@ -7,7 +7,7 @@
 
 #include "common.h"
 
-#if !defined(GIT_WINHTTP) && !defined(__EMSCRIPTEN__)
+#ifdef __EMSCRIPTEN__
 
 #include "git2.h"
 #include "http_parser.h"
@@ -634,29 +634,11 @@ static void clear_parser_state(http_subtransport *t)
 }
 
 static int write_chunk(git_stream *io, const char *buffer, size_t len)
-{
-	git_buf buf = GIT_BUF_INIT;
-
-	/* Chunk header */
-	git_buf_printf(&buf, "%" PRIxZ "\r\n", len);
-
-	if (git_buf_oom(&buf))
-		return -1;
-
-	if (git_stream__write_full(io, buf.ptr, buf.size, 0) < 0) {
-		git_buf_dispose(&buf);
-		return -1;
-	}
-
-	git_buf_dispose(&buf);
-
+{	
 	/* Chunk body */
 	if (len > 0 && git_stream__write_full(io, buffer, len, 0) < 0)
 		return -1;
 
-	/* Chunk footer */
-	if (git_stream__write_full(io, "\r\n", 2, 0) < 0)
-		return -1;
 
 	return 0;
 }
@@ -1018,10 +1000,7 @@ static int http_stream_read(
 {
 	http_stream *s = (http_stream *)stream;
 	http_subtransport *t = OWNING_SUBTRANSPORT(s);
-	parser_context ctx;
-	size_t bytes_parsed;
-
-replay:
+	
 	*bytes_read = 0;
 
 	assert(t->connected);
@@ -1058,84 +1037,23 @@ replay:
 			s->chunk_buffer_len = 0;
 
 			/* Write the final chunk. */
+			/*
+			
+			// Removed. Works with regular git backend, but not with Eclipse JGit which expects
+			// EOF here and complains if there are more data
+			
 			if (git_stream__write_full(t->server.stream,
 						   "0\r\n\r\n", 5, 0) < 0)
 				return -1;
+			*/
 		}
 
 		s->received_response = 1;
 	}
-
-	while (!*bytes_read && !t->parse_finished) {
-		size_t data_offset;
-		int error;
-
-		/*
-		 * Make the parse_buffer think it's as full of data as
-		 * the buffer, so it won't try to recv more data than
-		 * we can put into it.
-		 *
-		 * data_offset is the actual data offset from which we
-		 * should tell the parser to start reading.
-		 */
-		if (buf_size >= t->parse_buffer.len) {
-			t->parse_buffer.offset = 0;
-		} else {
-			t->parse_buffer.offset = t->parse_buffer.len - buf_size;
-		}
-
-		data_offset = t->parse_buffer.offset;
-
-		if (gitno_recv(&t->parse_buffer) < 0)
-			return -1;
-
-		/* This call to http_parser_execute will result in invocations of the
-		 * on_* family of callbacks. The most interesting of these is
-		 * on_body_fill_buffer, which is called when data is ready to be copied
-		 * into the target buffer. We need to marshal the buffer, buf_size, and
-		 * bytes_read parameters to this callback. */
-		ctx.t = t;
-		ctx.s = s;
-		ctx.buffer = buffer;
-		ctx.buf_size = buf_size;
-		ctx.bytes_read = bytes_read;
-
-		/* Set the context, call the parser, then unset the context. */
-		t->parser.data = &ctx;
-
-		bytes_parsed = http_parser_execute(&t->parser,
-			&t->settings,
-			t->parse_buffer.data + data_offset,
-			t->parse_buffer.offset - data_offset);
-
-		t->parser.data = NULL;
-
-		/* If there was a handled authentication failure, then parse_error
-		 * will have signaled us that we should replay the request. */
-		if (PARSE_ERROR_REPLAY == t->parse_error) {
-			s->sent_request = 0;
-
-			if ((error = http_connect(t)) < 0)
-				return error;
-
-			goto replay;
-		}
-
-		if (t->parse_error == PARSE_ERROR_EXT) {
-			return t->error;
-		}
-
-		if (t->parse_error < 0)
-			return -1;
-
-		if (bytes_parsed != t->parse_buffer.offset - data_offset) {
-			git_error_set(GIT_ERROR_NET,
-				"HTTP parser error: %s",
-				http_errno_description((enum http_errno)t->parser.http_errno));
-			return -1;
-		}
-	}
-
+			
+	// When using emscripten we simply bypass the http parser since we use the one built into the browser
+	*(bytes_read)  = git_stream_read(t->server.stream, buffer, buf_size);	
+	
 	return 0;
 }
 
@@ -1209,7 +1127,7 @@ static int http_stream_write_chunked(
 			}
 		}
 	}
-
+	
 	return 0;
 }
 

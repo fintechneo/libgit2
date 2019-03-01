@@ -1,0 +1,8 @@
+src
+deps
+CMake*
+libgit2.pc
+Makefile
+node_modules
+libgit2.js
+libgit2.wasm
