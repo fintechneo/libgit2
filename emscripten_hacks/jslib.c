@@ -4,14 +4,16 @@
  * Author: Peter Johan Salomonsen ( https://github.com/petersalomonsen ) 
  */
 
-#ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 
 #include <stdio.h>
 #include "streams/stransport.h"
 #include "streams/tls.h"
+#ifdef EMSCRIPTEN_NODEJS
+#include "streams/emscripten_nodejs.h"
+#else
 #include "streams/emscripten_browser.h"
-
+#endif
 #include "git2.h"
 #include "git2/clone.h"
 #include "git2/merge.h"
@@ -998,5 +1000,3 @@ void EMSCRIPTEN_KEEPALIVE jsgitregisterfilter(char * name, char * attributes, in
 	
 	git_filter_register(name, filter, priority);
 }
-
-#endif
