@@ -98,7 +98,7 @@ void emscripten_free(git_stream *stream) {
 	//git__free(stream);
 }
 
-int git_open_emscripten_stream(git_stream **out, const char *host, const char *port) {		
+int git_open_emscripten_nodejs_stream(git_stream **out, const char *host, const char *port) {		
 	xhrstream.version = GIT_STREAM_VERSION;
 	xhrstream.connect = emscripten_connect;
 	xhrstream.read = emscripten_read;

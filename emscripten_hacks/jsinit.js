@@ -23,3 +23,4 @@ jsgitprintlatestcommit = cwrap('jsgitprintlatestcommit', null, []);
 jsgitcommit = cwrap('jsgitcommit', null, ['string']);
 jsgithistory = cwrap('jsgithistory', null, []);
 jsgitregisterfilter = cwrap('jsgitregisterfilter', null, ['string', 'string', 'number']);
+jsgitgetlasterror = cwrap('jsgitgetlasterror', null, ['number']);

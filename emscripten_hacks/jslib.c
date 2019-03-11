@@ -9,11 +9,13 @@
 #include <stdio.h>
 #include "streams/stransport.h"
 #include "streams/tls.h"
+
 #ifdef EMSCRIPTEN_NODEJS
 #include "streams/emscripten_nodejs.h"
 #else
 #include "streams/emscripten_browser.h"
 #endif
+
 #include "git2.h"
 #include "git2/clone.h"
 #include "git2/merge.h"
@@ -192,7 +194,11 @@ void printLastError() {
 }
 
 void EMSCRIPTEN_KEEPALIVE jsgitinit() {
+#ifdef EMSCRIPTEN_NODEJS
+	git_stream_register_tls(git_open_emscripten_nodejs_stream);
+#else
 	git_stream_register_tls(git_open_emscripten_stream);
+#endif
 	git_libgit2_init();	
 	printf("libgit2 for javascript initialized\n");
 }
@@ -924,16 +930,15 @@ void EMSCRIPTEN_KEEPALIVE jsgitpush() {
 	git_push_init_options( &options, GIT_PUSH_OPTIONS_VERSION );
 
 	// do the push
-	printf("Do the push\n");
+	
 	error = git_remote_push( remote, &refspecs, &options);
 	if (error != 0) {
-		const git_error *err = giterr_last();
+		const git_error *err = git_error_last();
 		if (err) printf("ERROR %d: %s\n", err->klass, err->message);
 		else printf("ERROR %d: no detailed info\n", error);
 	}
-	printf("Push done\n");
-
 }
+
 
 void jsfilter_free(git_filter *f)
 {
@@ -999,4 +1004,16 @@ void EMSCRIPTEN_KEEPALIVE jsgitregisterfilter(char * name, char * attributes, in
 	filter->apply = jsfilter_apply;
 	
 	git_filter_register(name, filter, priority);
+}
+
+int EMSCRIPTEN_KEEPALIVE jsgitgetlasterror() {
+	const git_error *err = git_error_last();
+	
+	EM_ASM_({
+		jsgitlasterrorresult = ({
+			klass: $0,
+			message: UTF8ToString($1)
+		});
+	}, err->klass, err->message);
+	return err->klass;
 }
