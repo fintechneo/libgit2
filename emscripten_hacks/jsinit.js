@@ -18,6 +18,7 @@ jsgitstatus = cwrap('jsgitstatus', 'number', []);
 jsgitaddfileswithchanges = cwrap('jsgitaddfileswithchanges', null, []);
 jsgitpush = cwrap('jsgitpush', null, []);
 jsgitpull = cwrap('jsgitpull', null, []);
+jsgitreset_hard = cwrap('jsgitreset_hard', null, ['string']);
 jsgitshutdown = cwrap('jsgitshutdown', null, []);
 jsgitprintlatestcommit = cwrap('jsgitprintlatestcommit', null, []);
 jsgitcommit = cwrap('jsgitcommit', null, ['string']);

@@ -23,6 +23,7 @@
 #include "git2/sys/filter.h"
 
 static git_repository *repo = NULL;
+int merge_file_favor = GIT_MERGE_FILE_FAVOR_NORMAL;
 
 typedef struct progress_data {
 	git_transfer_progress fetch_progress;
@@ -405,6 +406,7 @@ int fetchead_foreach_cb(const char *ref_name,
 		);			
 					
 		git_merge_options merge_opts = GIT_MERGE_OPTIONS_INIT;		
+		merge_opts.file_favor = merge_file_favor;
 		merge_opts.file_flags = 
 			(GIT_MERGE_FILE_STYLE_DIFF3 | GIT_MERGE_FILE_DIFF_MINIMAL);
 
@@ -582,7 +584,9 @@ void EMSCRIPTEN_KEEPALIVE jsgitresolvemergecommit() {
 	git_commit_free(fetchhead_commit);			
 }
 
-void EMSCRIPTEN_KEEPALIVE jsgitpull() {
+void EMSCRIPTEN_KEEPALIVE jsgitpull(int file_favor) {
+	merge_file_favor = file_favor;
+	
 	git_remote *remote = NULL;
 	const git_transfer_progress *stats;
 	git_fetch_options fetch_opts = GIT_FETCH_OPTIONS_INIT;
@@ -619,8 +623,7 @@ void EMSCRIPTEN_KEEPALIVE jsgitpull() {
 	}
 
 	printf("Fetch done\n");
-	
-	
+		
 	git_repository_fetchhead_foreach(repo,&fetchead_foreach_cb,NULL);
 	
 	//git_repository_state_cleanup(repo);
@@ -874,7 +877,8 @@ int EMSCRIPTEN_KEEPALIVE jsgitstatus() {
 			git_blob *their_blob;
 			git_blob_lookup(&their_blob, repo, &their->id);
 			
-			int is_binary = git_blob_is_binary(our_blob) | git_blob_is_binary(their_blob);
+			int is_binary = (our_blob != NULL && git_blob_is_binary(our_blob)) ||
+					(their_blob != NULL && git_blob_is_binary(their_blob)) ? 1 : 0;
 
 			fprintf(stderr, "conflict: a:%s o:%s t:%s, binary:%d\n",
 					ancestor ? ancestor->path : "NULL",
@@ -939,6 +943,20 @@ void EMSCRIPTEN_KEEPALIVE jsgitpush() {
 	}
 }
 
+void EMSCRIPTEN_KEEPALIVE jsgitreset_hard(char * committish) {
+	git_object *obj = NULL;
+	int error = git_revparse_single(&obj, repo, committish);
+	
+	if(error != 0) {
+		const git_error *err = git_error_last();
+		printf("ERROR %d: %s\n", err->klass, err->message);		
+	}
+
+	git_checkout_options checkout_opts = GIT_CHECKOUT_OPTIONS_INIT;
+	checkout_opts.checkout_strategy = GIT_CHECKOUT_FORCE;
+	
+	git_reset(repo,obj,GIT_RESET_HARD,&checkout_opts);
+}
 
 void jsfilter_free(git_filter *f)
 {
