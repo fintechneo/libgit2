@@ -532,6 +532,7 @@ static int write_chunk(git_stream *io, const char *buffer, size_t len)
 static int http_connect(http_subtransport *t)
 {
 	git_stream *stream = NULL;
+	git_net_url *url;
 	int error;
 
 	if (t->connected &&
@@ -547,8 +548,8 @@ static int http_connect(http_subtransport *t)
 
 	t->connected = 0;
 
-	
-	error = git_tls_stream_new(&stream, NULL, NULL);
+	url = &t->server.url;	
+	error = git_tls_stream_new(&stream,  url->host, url->port);
 	
 	if (error < 0)
 		goto on_error;

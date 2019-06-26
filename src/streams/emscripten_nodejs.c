@@ -19,7 +19,7 @@ int emscripten_connect(git_stream *stream) {
 	EM_ASM(
 		gitxhrdata = null;
 	);
-	return 1;
+	return 0;
 }
 
 ssize_t emscripten_read(git_stream *stream, void *data, size_t len) {
