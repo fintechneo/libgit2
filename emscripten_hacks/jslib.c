@@ -123,9 +123,39 @@ int cloneremote(const char * url,const char * path)
 	clone_opts.fetch_opts.callbacks.transfer_progress = &fetch_progress;
 	clone_opts.fetch_opts.callbacks.credentials = cred_acquire_cb;
 	clone_opts.fetch_opts.callbacks.payload = &pd;
-
+		
+	git_strarray headers;
+	int has_headers = EM_ASM_INT({
+		return Module.jsgitheaders && Module.jsgitheaders.length > 0 ? 1 : 0;
+	});
+	
+	if (has_headers) {	
+		headers.count = EM_ASM_({return Module.jsgitheaders.length;});
+		headers.strings = malloc(sizeof(char*) * headers.count);
+		EM_ASM_({		
+			Module.jsgitheaders.forEach((headerObj, ndx) => {
+				const header = `${headerObj.name}: ${headerObj.value}`;
+				const byteLen = lengthBytesUTF8(header) + 1;
+				const strPtr = _malloc(byteLen);
+				stringToUTF8(header, strPtr, byteLen);
+				setValue($0 + $1 * ndx, strPtr, '*');		
+			});
+		}, headers.strings, sizeof(char*));
+		
+		clone_opts.fetch_opts.custom_headers = headers;
+	}
+	
 	// Do the clone
 	error = git_clone(&repo, url, path, &clone_opts);
+	
+	// Free allocated strings for headers
+	if(has_headers) {
+		for (int n = 0;n < headers.count; n++) {
+			free(headers.strings[n]);
+		}
+		free(headers.strings);
+	}
+	
 	printf("\n");
 	if (error != 0) {
 		const git_error *err = giterr_last();
