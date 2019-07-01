@@ -105,6 +105,41 @@ int cred_acquire_cb(git_cred **out,
 	return error;
 }
 
+/**
+ * Apply headers to fetch options from Module.jsgitheaders
+ */
+int fetch_applyheaders(git_strarray * headers) {
+	int has_headers = EM_ASM_INT({
+		return Module.jsgitheaders && Module.jsgitheaders.length > 0 ? 1 : 0;
+	});
+	
+	if (has_headers) {	
+		headers->count = EM_ASM_({return Module.jsgitheaders.length;});
+		headers->strings = malloc(sizeof(char*) * headers->count);
+		EM_ASM_({		
+			Module.jsgitheaders.forEach((headerObj, ndx) => {
+				const header = `${headerObj.name}: ${headerObj.value}`;
+				const byteLen = lengthBytesUTF8(header) + 1;
+				const strPtr = _malloc(byteLen);
+				stringToUTF8(header, strPtr, byteLen);
+				setValue($0 + $1 * ndx, strPtr, '*');		
+			});
+		}, headers->strings, sizeof(char*));
+	}
+
+	return has_headers;
+}
+
+/**
+ * Free allocated strings for headers
+ */
+void fetch_freeheaders(git_strarray * headers) {
+	for (int n = 0;n < headers->count; n++) {
+		free(headers->strings[n]);
+	}
+	free(headers->strings);
+}
+
 int cloneremote(const char * url,const char * path)
 {
 	progress_data pd = {{0}};
@@ -125,35 +160,17 @@ int cloneremote(const char * url,const char * path)
 	clone_opts.fetch_opts.callbacks.payload = &pd;
 		
 	git_strarray headers;
-	int has_headers = EM_ASM_INT({
-		return Module.jsgitheaders && Module.jsgitheaders.length > 0 ? 1 : 0;
-	});
-	
-	if (has_headers) {	
-		headers.count = EM_ASM_({return Module.jsgitheaders.length;});
-		headers.strings = malloc(sizeof(char*) * headers.count);
-		EM_ASM_({		
-			Module.jsgitheaders.forEach((headerObj, ndx) => {
-				const header = `${headerObj.name}: ${headerObj.value}`;
-				const byteLen = lengthBytesUTF8(header) + 1;
-				const strPtr = _malloc(byteLen);
-				stringToUTF8(header, strPtr, byteLen);
-				setValue($0 + $1 * ndx, strPtr, '*');		
-			});
-		}, headers.strings, sizeof(char*));
-		
+	int has_headers = fetch_applyheaders(&headers);
+	if(has_headers) {
 		clone_opts.fetch_opts.custom_headers = headers;
 	}
-	
+
 	// Do the clone
 	error = git_clone(&repo, url, path, &clone_opts);
 	
 	// Free allocated strings for headers
 	if(has_headers) {
-		for (int n = 0;n < headers.count; n++) {
-			free(headers.strings[n]);
-		}
-		free(headers.strings);
+		fetch_freeheaders(&headers);
 	}
 	
 	printf("\n");
@@ -630,13 +647,25 @@ void EMSCRIPTEN_KEEPALIVE jsgitpull(int file_favor) {
 	fetch_opts.callbacks.transfer_progress = transfer_progress_cb;
 	fetch_opts.callbacks.credentials = cred_acquire_cb;
 
+	git_strarray headers;
+	int has_headers = fetch_applyheaders(&headers);
+	if(has_headers) {
+		fetch_opts.custom_headers = headers;
+	}
+
 	/**
 	 * Perform the fetch with the configured refspecs from the
 	 * config. Update the reflog for the updated references with
 	 * "fetch".
 	 */	 
-	if (git_remote_fetch(remote, NULL, &fetch_opts, "fetch") < 0)
+	int error = git_remote_fetch(remote, NULL, &fetch_opts, "fetch");
+	if(has_headers) {
+		fetch_freeheaders(&headers);
+	}
+
+	if(error < 0) {
 		goto on_error;
+	}
 
 	/**
 	 * If there are local objects (we got a thin pack), then tell
@@ -962,6 +991,12 @@ void EMSCRIPTEN_KEEPALIVE jsgitpush() {
 	// configure options
 	git_push_options options;
 	git_push_init_options( &options, GIT_PUSH_OPTIONS_VERSION );
+
+	git_strarray headers;
+	int has_headers = fetch_applyheaders(&headers);
+	if(has_headers) {
+		options.custom_headers = headers;
+	}
 
 	// do the push
 	
