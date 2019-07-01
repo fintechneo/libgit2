@@ -1,0 +1,6 @@
+{
+    "name": "libgit2.js",
+    "version": "0.0.1",
+    "description": "Webassembly port of libgit2 for nodejs and the browser",
+    "main": "libgit2_node.js"
+}
