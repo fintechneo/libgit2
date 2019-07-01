@@ -1001,6 +1001,12 @@ void EMSCRIPTEN_KEEPALIVE jsgitpush() {
 	// do the push
 	
 	error = git_remote_push( remote, &refspecs, &options);
+
+	// Free allocated strings for headers
+	if(has_headers) {
+		fetch_freeheaders(&headers);
+	}
+	
 	if (error != 0) {
 		const git_error *err = git_error_last();
 		if (err) printf("ERROR %d: %s\n", err->klass, err->message);

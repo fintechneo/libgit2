@@ -75,7 +75,7 @@ ssize_t emscripten_write(git_stream *stream, const char *data, size_t len, int f
 		} else if(method === 'POST') {	
 			responsedata = null;			
 			gitxhrreadoffset = 0;
-			gitxhrdata = data;
+			gitxhrdata = data.slice(0);
 		} else {			
 			const appended = new Uint8Array(gitxhrdata.length+$1);
 			appended.set(gitxhrdata,0);
