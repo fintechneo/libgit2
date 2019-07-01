@@ -30,7 +30,7 @@ ssize_t emscripten_read(git_stream *stream, void *data, size_t len) {
 			const cp = require('child_process');
 			
 			console.log((Buffer.from(gitxhrdata)+'').substr(0, 500));
-			const proc = cp.spawnSync(process.argv0, ['libgit2httpsrequest.js'], {input: 
+			const proc = cp.spawnSync(process.argv0, [__dirname + '/libgit2httpsrequest.js'], {input: 
 				gitxhrdata
 			});
 			gitxhrdata = null;
@@ -68,7 +68,7 @@ ssize_t emscripten_write(git_stream *stream, const char *data, size_t len, int f
 			gitxhrreadoffset = 0;
 			const cp = require('child_process');			
 			// console.log(Buffer.from(data)+'');
-			const proc = cp.spawnSync(process.argv0, ['libgit2httpsrequest.js'], {input: 
+			const proc = cp.spawnSync(process.argv0, [__dirname + '/libgit2httpsrequest.js'], {input: 
 				data
 			});			
 			responsedata = proc.stdout;				
