@@ -25,3 +25,16 @@ jsgitcommit = cwrap('jsgitcommit', null, ['string']);
 jsgithistory = cwrap('jsgithistory', null, []);
 jsgitregisterfilter = cwrap('jsgitregisterfilter', null, ['string', 'string', 'number']);
 jsgitgetlasterror = cwrap('jsgitgetlasterror', null, ['number']);
+
+const nodePermissions = FS.nodePermissions;
+FS.nodePermissions = function(node, perms) { 
+    if(node.mode & 0o100000) {
+        /* 
+         * Emscripten doesn't support the sticky bit, while libgit2 sets this on some files.
+         * grant permission if sticky bit is set
+         */        
+        return 0;
+    } else {
+        return nodePermissions(node, perms);
+    }
+};

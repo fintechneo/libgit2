@@ -451,10 +451,6 @@ int git_filebuf_commit(git_filebuf *file)
 
 	file->did_rename = true;
 
-	#ifdef __EMSCRIPTEN__
-	chmod(file->path_original,0777);
-	#endif
-	
 	git_filebuf_cleanup(file);
 	return 0;
 
