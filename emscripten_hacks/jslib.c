@@ -1106,3 +1106,14 @@ int EMSCRIPTEN_KEEPALIVE jsgitgetlasterror() {
 	}, err->klass, err->message);
 	return err->klass;
 }
+
+
+
+void EMSCRIPTEN_KEEPALIVE jsregisterdriver() {
+
+
+  printf(" Hello from register driver \n ");
+
+  EM_ASM_({ driver_callback() });
+	
+}

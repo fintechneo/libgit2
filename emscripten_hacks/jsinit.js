@@ -26,6 +26,14 @@ jsgithistory = cwrap('jsgithistory', null, []);
 jsgitregisterfilter = cwrap('jsgitregisterfilter', null, ['string', 'string', 'number']);
 jsgitgetlasterror = cwrap('jsgitgetlasterror', null, ['number']);
 
+
+var driver_callback = function() {
+    console.log(" Hello from driver callback ");
+}
+
+
+jsregisterdriver = cwrap('jsregisterdriver', null, []);
+
 const nodePermissions = FS.nodePermissions;
 FS.nodePermissions = function(node, perms) { 
     if(node.mode & 0o100000) {
