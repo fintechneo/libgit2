@@ -5,6 +5,12 @@
 /trash-*.exe
 /libgit2.pc
 /config.mak
+node_modules
+conflict
+origLHS
+resolvedLHS
+origRHS
+resolvedRHS
 *.o
 *.a
 *.exe
