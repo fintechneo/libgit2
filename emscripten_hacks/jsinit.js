@@ -1,3 +1,18 @@
+
+
+jsregisterfunction = function(func,sig) {
+
+    // var pointer = addFunction(function() { 
+    //     console.log('I was called from C world!'); 
+    //    });
+       
+    var pointer = addFunction(func,sig); 
+    return pointer;
+}
+
+
+jsinvokefunction = cwrap('jsinvokefunction', 'null', ['number']);
+
 /**
  * replace jsgitprogresscallback with your own progress message handler.
  */
@@ -26,13 +41,8 @@ jsgithistory = cwrap('jsgithistory', null, []);
 jsgitregisterfilter = cwrap('jsgitregisterfilter', null, ['string', 'string', 'number']);
 jsgitgetlasterror = cwrap('jsgitgetlasterror', null, ['number']);
 
-
-var driver_callback = function() {
-    console.log(" Hello from driver callback ");
-}
-
-
 jsregisterdriver = cwrap('jsregisterdriver', null, []);
+jsgitattrget = cwrap('jsgitattrget', 'string', ['string','string']);
 
 const nodePermissions = FS.nodePermissions;
 FS.nodePermissions = function(node, perms) { 
