@@ -10,9 +10,6 @@ jsregisterfunction = function(func,sig) {
     return pointer;
 }
 
-
-jsinvokefunction = cwrap('jsinvokefunction', 'null', ['number']);
-
 /**
  * replace jsgitprogresscallback with your own progress message handler.
  */
