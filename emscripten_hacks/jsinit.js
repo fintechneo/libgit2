@@ -10,6 +10,18 @@ jsregisterfunction = function(func,sig) {
     return pointer;
 }
 
+
+custom_driver_callback = function(ancestor,ours,theirs){
+    console.log(" ===== customer_driver_callback  .. . .  ours");
+    console.log(UTF8ToString(ours));
+    console.log(" ===== customer_driver_callback  .. . .  thiers");
+    console.log(UTF8ToString(theirs));
+    console.log(" ===== customer_driver_callback  .. . .   ancestor");
+    console.log(UTF8ToString(ancestor));
+    console.log(" ===== customer_driver_callback  end ");
+ 
+}
+
 /**
  * replace jsgitprogresscallback with your own progress message handler.
  */

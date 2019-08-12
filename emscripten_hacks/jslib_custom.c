@@ -2,6 +2,7 @@
 /**
  * API for adding custom merge driver 
  *   
+ *  PJL  Aug 2019
  */
 
 #include <emscripten.h>
@@ -28,11 +29,9 @@
 
 #include "merge_driver.h"
 
-static void (*custom_driver_callback)(char *ancestor, char *ours, char *theirs) = NULL;
+// static void (*custom_driver_callback)(const char *ancestor, const char *ours, const char *theirs) = NULL;
 
-extern static git_repository *repo;
-
-int merge_file_favor = GIT_MERGE_FILE_FAVOR_NORMAL;
+extern git_repository *repo;  // lives in jslib.c
 
 static int custom_merge_file__from_inputs(
     git_merge_file_result *out,
@@ -42,7 +41,13 @@ static int custom_merge_file__from_inputs(
     const git_merge_file_options *given_opts)
 {
 
-    (*custom_driver_callback)(ancestor->ptr, ours->ptr, theirs->ptr);
+   // printf(" XXX OURS = %p %s\n",ours->ptr,ours->ptr);
+
+
+    EM_ASM_( 
+       { custom_driver_callback($0,$1,$2)
+       },ancestor->ptr, ours->ptr,
+         theirs->ptr);
 }
 
 int custom_merge_file__input_from_index(
@@ -200,12 +205,10 @@ static void test_drivers_unregister(void)
     git_merge_driver_unregister("*");
 }
 
-void EMSCRIPTEN_KEEPALIVE jsregisterdriver(void (*f)(char *, char *, char *))
+void EMSCRIPTEN_KEEPALIVE jsregisterdriver()
 {
 
     git_config *cfg;
-
-    custom_driver_callback = f;
 
     //  (*custom_driver_callback)();
     // printf(" Hello from register driver \n ");

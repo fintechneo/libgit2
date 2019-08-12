@@ -1,17 +1,11 @@
 const lg = require('../libgit2.js');
 
 
-
-var func = function(ancestor,ours,thiers) { 
-    console.log('I am going to be the call back!'); 
-};
-
-
 lg.onRuntimeInitialized = () => {
     const FS = lg.FS;
     const MEMFS = FS.filesystems.MEMFS;
     
-    var pointer=jsregisterfunction(func,'sss');
+    var pointer=jsregisterfunction();
 
     // Create bare repo
     FS.mkdir('/working');

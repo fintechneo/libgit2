@@ -26,7 +26,8 @@
 #include "buffer.h"
 #include "merge.h"
 
-static git_repository *repo = NULL;
+// PJL remove static to make visible to jslib_custom.c
+git_repository *repo = NULL;
 
 int merge_file_favor = GIT_MERGE_FILE_FAVOR_NORMAL;
 
