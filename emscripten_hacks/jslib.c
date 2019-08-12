@@ -1125,6 +1125,17 @@ int EMSCRIPTEN_KEEPALIVE jsgitgetlasterror() {
 /******************************************************/
 
 
+static int custom_merge_file__from_inputs(
+	git_merge_file_result *out,
+	const git_merge_file_input *ancestor,
+	const git_merge_file_input *ours,
+	const git_merge_file_input *theirs,
+	const git_merge_file_options *given_opts)
+{
+	
+	(out, ancestor, ours, theirs, given_opts);
+}
+
 int custom_merge_file__input_from_index(
 	git_merge_file_input *input_out,
 	git_odb_object **odb_object_out,
@@ -1182,6 +1193,10 @@ int custom_merge_file_from_index(
 			&their_input, &odb_object[2], odb, theirs)) < 0)
 		goto done;
 
+
+	error = custom_merge_file__from_inputs(out,
+		ancestor_ptr, &our_input, &their_input, options);
+
 done:
 	git_odb_object_free(odb_object[0]);
 	git_odb_object_free(odb_object[1]);
@@ -1205,9 +1220,14 @@ static int test_driver_apply(
 
 	git_merge_file_result result = {0};
 	git_merge_file_options file_opts = GIT_MERGE_FILE_OPTIONS_INIT;
+
+	// 
 	if ((error = custom_merge_file_from_index(&result, src->repo,
 		src->ancestor, src->ours, src->theirs, &file_opts)) < 0)
 		goto done;
+
+
+    printf(" Result will be written to %s\n", result.path);
 
 	if (!result.automergeable &&
 		!(file_opts.flags & GIT_MERGE_FILE_FAVOR__CONFLICTED)) {
@@ -1224,6 +1244,8 @@ static int test_driver_apply(
 		src->ancestor ? src->ancestor->mode : 0,
 		src->ours ? src->ours->mode : 0,
 		src->theirs ? src->theirs->mode : 0);
+
+
 
 	merged_out->ptr = (char *)result.ptr;
 	merged_out->size = result.len;
