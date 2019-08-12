@@ -41,7 +41,7 @@ jsgithistory = cwrap('jsgithistory', null, []);
 jsgitregisterfilter = cwrap('jsgitregisterfilter', null, ['string', 'string', 'number']);
 jsgitgetlasterror = cwrap('jsgitgetlasterror', null, ['number']);
 
-jsregisterdriver = cwrap('jsregisterdriver', null, []);
+jsregisterdriver = cwrap('jsregisterdriver', null,  ['number']);
 jsgitattrget = cwrap('jsgitattrget', 'string', ['string','string']);
 
 const nodePermissions = FS.nodePermissions;

@@ -1,8 +1,18 @@
 const lg = require('../libgit2.js');
+
+
+
+var func = function() { 
+    console.log('I am going to be the call back!'); 
+};
+
+
 lg.onRuntimeInitialized = () => {
     const FS = lg.FS;
     const MEMFS = FS.filesystems.MEMFS;
     
+    var pointer=jsregisterfunction(func,'');
+
     // Create bare repo
     FS.mkdir('/working');
     FS.mount(MEMFS, { root: '.' }, '/working');
@@ -91,7 +101,7 @@ lg.onRuntimeInitialized = () => {
 
 //  register custom driver
     const line="*.json merge=custom\n"
-    jsregisterdriver();
+    jsregisterdriver(pointer);
     FS.writeFile(".gitattributes", line);
     const jsonM = jsgitattrget('test.json','merge');
     console.log(`test.json merge=${jsonM}`);

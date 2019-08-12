@@ -28,10 +28,13 @@
 
 #include "merge_driver.h"
 
+static void(*custom_driver_callback)(void) = NULL;
 
+// PJL just testing
 void EMSCRIPTEN_KEEPALIVE jsinvokefunction(void(*f)(void)) {
   (*f)();
 }
+//---
 
 static git_repository *repo = NULL;
 int merge_file_favor = GIT_MERGE_FILE_FAVOR_NORMAL;
@@ -1206,7 +1209,6 @@ static int test_driver_apply(
 		src->ancestor, src->ours, src->theirs, &file_opts)) < 0)
 		goto done;
 
-    printf("XXXXXXXXX    ** ERROR **   XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX  \n");
 	if (!result.automergeable &&
 		!(file_opts.flags & GIT_MERGE_FILE_FAVOR__CONFLICTED)) {
 		error = GIT_EMERGECONFLICT;
@@ -1275,11 +1277,13 @@ static void test_drivers_unregister(void)
 }
 
 
-void EMSCRIPTEN_KEEPALIVE jsregisterdriver() {
+void EMSCRIPTEN_KEEPALIVE jsregisterdriver(void(*f)(void)) {
 
   git_config *cfg;
 
+  custom_driver_callback = f;
   
+  (*custom_driver_callback)();
   // printf(" Hello from register driver \n ");
  
 
